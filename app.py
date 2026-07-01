@@ -894,16 +894,16 @@ with tab_predict:
     with _cl_l:
         st.markdown(
             _checklist_html([
-                "neighborhood quality and location",
-                "number of bedrooms",
+                "Overall quality rating",
+                "Total living and basement area",
             ]),
             unsafe_allow_html=True,
         )
     with _cl_r:
         st.markdown(
             _checklist_html([
-                "living area (sq ft)",
-                "year built",
+                "Neighborhood tier",
+                "Year built",
             ]),
             unsafe_allow_html=True,
         )
