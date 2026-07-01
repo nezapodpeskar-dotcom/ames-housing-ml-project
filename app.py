@@ -313,6 +313,62 @@ hr {{
     overflow: hidden;
     box-shadow: 0 2px 10px rgba(43,43,40,0.05);
 }}
+
+/* ── Replace Streamlit default orange/red with muted olive #8B8A5A ── */
+
+/* Slider: filled (active) track */
+[data-testid="stSlider"] > div > div > div > div:first-child {{
+    background-color: #8B8A5A !important;
+}}
+/* Slider: thumb handle */
+[data-testid="stSlider"] [role="slider"] {{
+    background-color: #8B8A5A !important;
+    border-color: #8B8A5A !important;
+}}
+/* Slider: thumb focus ring */
+[data-testid="stSlider"] [role="slider"]:focus {{
+    box-shadow: 0 0 0 4px rgba(139,138,90,0.22) !important;
+    outline: none !important;
+}}
+
+/* Selectbox + input: focused border */
+[data-baseweb="select"] > div:focus-within,
+[data-baseweb="select"]:focus-within > div {{
+    border-color: #8B8A5A !important;
+    box-shadow: 0 0 0 2px rgba(139,138,90,0.18) !important;
+}}
+[data-baseweb="input"]:focus-within {{
+    border-color: #8B8A5A !important;
+    box-shadow: 0 0 0 2px rgba(139,138,90,0.18) !important;
+}}
+
+/* Dropdown: hovered and selected option */
+[data-baseweb="menu"] [aria-selected="true"] {{
+    background-color: rgba(139,138,90,0.14) !important;
+    color: {CHARCOAL} !important;
+}}
+[data-baseweb="menu"] li:hover {{
+    background-color: rgba(139,138,90,0.10) !important;
+}}
+
+/* Text selection highlight */
+::selection {{
+    background: rgba(139,138,90,0.22);
+    color: {CHARCOAL};
+}}
+
+/* Streamlit progress / spinner accent */
+[data-testid="stStatusWidget"] svg,
+.stProgress > div > div {{
+    color: #8B8A5A !important;
+    background-color: #8B8A5A !important;
+}}
+
+/* Form submit button active/focus ring */
+.stFormSubmitButton > button:focus {{
+    box-shadow: 0 0 0 3px rgba(139,138,90,0.28) !important;
+    outline: none !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
