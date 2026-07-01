@@ -392,6 +392,28 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
+    st.divider()
+
+    st.markdown(
+        f"""
+        <div style="background:{WHITE}; border:1px solid #DDD9D0;
+                    border-left:4px solid {OLIVE}; border-radius:0 10px 10px 0;
+                    padding:1.0rem 1.1rem;">
+          <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.13em;
+                      color:{SAGE}; text-transform:uppercase; margin-bottom:0.6rem;">
+            Dataset at a glance
+          </div>
+          <div style="font-size:0.85rem; color:{CHARCOAL}; line-height:1.75;">
+            <strong>2,930</strong> home sales<br>
+            <strong>2006 – 2010</strong> sale years<br>
+            <strong>80</strong> features per property<br>
+            Source: De Cock (2011), <em>Journal of Statistics Education</em>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # HEADER BAR
@@ -417,10 +439,21 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# ── Shared helpers ───────────────────────────────────────────────────────────
+def _checklist_html(items):
+    rows = "".join(
+        f"<div style='display:flex; align-items:flex-start; margin-bottom:0.45rem;'>"
+        f"<span style='color:{OLIVE}; font-weight:800; margin-right:0.55rem; flex-shrink:0;'>&#10003;</span>"
+        f"<span style='font-size:0.9rem; color:{CHARCOAL}; line-height:1.6;'>{item}</span>"
+        f"</div>"
+        for item in items
+    )
+    return f"<div>{rows}</div>"
+
 # ════════════════════════════════════════════════════════════════════════════
 # TABS
 # ════════════════════════════════════════════════════════════════════════════
-tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Predict", "EDA", "Neighborhoods"])
+tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Price & Premium Home Prediction", "EDA", "Neighborhoods"])
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 0 — HOME
@@ -428,56 +461,102 @@ tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Predict", "EDA", "N
 with tab_home:
 
     # ── HERO ────────────────────────────────────────────────────────────────
+    _logo_path = "assets/logonoback.png"
+    _logo_fallback = "assets/logo.png"
+    try:
+        _logo_b64 = __import__("base64").b64encode(open(_logo_path, "rb").read()).decode()
+    except FileNotFoundError:
+        _logo_b64 = __import__("base64").b64encode(open(_logo_fallback, "rb").read()).decode()
+
+    # Hero: two native columns so Streamlit controls layout (flexbox stripped by sanitizer)
+    _hero_l, _hero_r = st.columns([1, 1], gap="large")
+
+    with _hero_l:
+        st.markdown(
+            f"<div style='text-align:center; padding:2rem 0;'>"
+            f"<img src='data:image/png;base64,{_logo_b64}' "
+            f"     style='width:320px; height:auto;' />"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    with _hero_r:
+        st.markdown(
+            f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.22em; "
+            f"color:{OLIVE}; text-transform:uppercase; margin:2rem 0 0.8rem 0;'>"
+            f"Welcome</p>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"<h2 style='font-size:2.0rem; font-weight:800; color:{CHARCOAL}; "
+            f"letter-spacing:-0.025em; line-height:1.25; margin:0 0 1.0rem 0;'>"
+            f"What's your home worth?<br>Let's find out.</h2>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"<p style='font-size:0.94rem; color:{SAGE}; line-height:1.75; "
+            f"margin:0 0 1.4rem 0;'>"
+            f"Instantly estimate your home's market value using machine learning "
+            f"trained on nearly 3,000 real Ames sales.</p>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"<div style='width:40px; height:2px; background:{OLIVE}; "
+            f"border-radius:2px; margin-bottom:1.2rem;'></div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.14em; "
+            f"color:{SAGE}; text-transform:uppercase; margin:0 0 0.6rem 0;'>Get</p>"
+            f"<p style='font-size:0.92rem; color:{CHARCOAL}; line-height:1.9; margin:0;'>"
+            f"<span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem;'>&#10003;</span>"
+            f"Predicted sale price<br>"
+            f"<span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem;'>&#10003;</span>"
+            f"Premium-home prediction<br>"
+            f"<span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem;'>&#10003;</span>"
+            f"Market positioning insights"
+            f"</p>",
+            unsafe_allow_html=True,
+        )
+
     st.markdown(
-        f"""
-        <div style="text-align:center; padding:1.6rem 0 2.2rem 0;">
-          <img src="data:image/png;base64,{{logo_b64}}"
-               style="width:170px; height:auto; margin-bottom:1.1rem;" />
-          <h1 style="font-size:2.4rem; font-weight:800; color:{CHARCOAL};
-                     letter-spacing:-0.025em; margin:0 0 0.6rem 0; line-height:1.2;">
-            Discover what your Ames home is really worth
-          </h1>
-          <p style="font-size:1.0rem; color:{SAGE}; margin:0 auto;
-                    font-weight:500; line-height:1.6; max-width:540px;">
-            Enter a few property details and get an instant price estimate —
-            plus a read on whether it ranks in the top 25% of the market.
-          </p>
-        </div>
-        """.replace("{logo_b64}", __import__("base64").b64encode(
-            open("assets/logo.png", "rb").read()
-        ).decode()),
+        f"<hr style='border-color:{SAGE}; opacity:0.35; margin:1.8rem 0 2rem 0;'>",
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        f"<hr style='border-color:{SAGE}; opacity:0.45; margin-bottom:2rem;'>",
-        unsafe_allow_html=True,
-    )
-
-    # ── ABOUT AMES ──────────────────────────────────────────────────────────
-    st.markdown(
-        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
-        f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.7rem;'>"
-        f"About Ames, Iowa</p>",
-        unsafe_allow_html=True,
-    )
-
-    _aw_l, _aw_r = st.columns([3, 2], gap="large")
+    # ── ABOUT AMES + LOCATOR MAP (two-column) ───────────────────────────────
+    _aw_l, _aw_r = st.columns([1, 1], gap="large")
 
     with _aw_l:
         st.markdown(
+            f"<p style='font-size:1.1rem; font-weight:700; letter-spacing:0.13em; "
+            f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.8rem;'>"
+            f"About Ames, Iowa</p>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
             f"""
-            <div style="font-size:0.95rem; color:{CHARCOAL}; line-height:1.85;">
-              Ames is a mid-sized college town in central Iowa, shaped by Iowa State
-              University and a stable, tight-knit community of around 66,000 residents.
-              The housing market here runs the full spectrum — modest starter homes near
-              the rail corridor, solid family neighbourhoods in the middle ring, and
-              spacious new-build estates in the northern suburbs — which is exactly what
-              makes it such a clear lens for understanding
-              <em>what actually drives home value</em>.
-              Unlike many datasets, Ames captures a real market cycle (2006–2010) across
-              2,930 genuine transactions, with enough diversity to train models that
-              generalise beyond the obvious.
+            <div style="font-size:1.05rem; color:{CHARCOAL}; line-height:1.8;">
+              <div style="margin-bottom:0.55rem; display:flex; align-items:flex-start;">
+                <span style="color:{OLIVE}; font-weight:700; margin-right:0.5rem; flex-shrink:0;">&#10003;</span>
+                <span style="text-align:justify;">College town in central Iowa, home to Iowa State University</span>
+              </div>
+              <div style="margin-bottom:0.55rem; display:flex; align-items:flex-start;">
+                <span style="color:{OLIVE}; font-weight:700; margin-right:0.5rem; flex-shrink:0;">&#10003;</span>
+                <span style="text-align:justify;">Around 66,000 residents in a stable, tight-knit community</span>
+              </div>
+              <div style="margin-bottom:0.55rem; display:flex; align-items:flex-start;">
+                <span style="color:{OLIVE}; font-weight:700; margin-right:0.5rem; flex-shrink:0;">&#10003;</span>
+                <span style="text-align:justify;">Housing ranges from starter homes to upscale new-build estates</span>
+              </div>
+              <div style="margin-bottom:0.55rem; display:flex; align-items:flex-start;">
+                <span style="color:{OLIVE}; font-weight:700; margin-right:0.5rem; flex-shrink:0;">&#10003;</span>
+                <span style="text-align:justify;">Sale prices span from under $40,000 to over $600,000</span>
+              </div>
+              <div style="margin-bottom:0.55rem; display:flex; align-items:flex-start;">
+                <span style="color:{OLIVE}; font-weight:700; margin-right:0.5rem; flex-shrink:0;">&#10003;</span>
+                <span style="text-align:justify;">Overall quality and living area are the strongest price drivers</span>
+              </div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -485,45 +564,11 @@ with tab_home:
 
     with _aw_r:
         st.markdown(
-            f"""
-            <div style="background:{WHITE}; border:1px solid #DDD9D0;
-                        border-left:4px solid {OLIVE}; border-radius:0 10px 10px 0;
-                        padding:1.2rem 1.3rem;">
-              <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.13em;
-                          color:{SAGE}; text-transform:uppercase; margin-bottom:0.6rem;">
-                Dataset at a glance
-              </div>
-              <div style="font-size:0.88rem; color:{CHARCOAL}; line-height:1.75;">
-                <strong>2,930</strong> home sales<br>
-                <strong>2006 – 2010</strong> sale years<br>
-                <strong>80</strong> features per property<br>
-                Source: De Cock (2011), <em>Journal of Statistics Education</em>
-              </div>
-            </div>
-            """,
+            f"<p style='font-size:0.88rem; color:{CHARCOAL}; margin-bottom:0.6rem; "
+            f"line-height:1.6;'>See it for yourself — Ames sits right in the heart "
+            f"of the Midwest.</p>",
             unsafe_allow_html=True,
         )
-
-    # ── WELCOME BANNER ──────────────────────────────────────────────────────
-    st.markdown(
-        f"""
-        <div style="text-align:center; padding:1.8rem 0 0.9rem 0;">
-          <p style="font-size:0.72rem; font-weight:700; letter-spacing:0.18em;
-                    color:{SAGE}; text-transform:uppercase; margin:0 0 0.5rem 0;">
-            Welcome
-          </p>
-          <p style="font-size:1.2rem; font-weight:600; color:{CHARCOAL};
-                    margin:0; line-height:1.5;">
-            Let's find out what your Ames home is really worth.
-          </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # ── LOCATOR MAP ─────────────────────────────────────────────────────────
-    _map_l, _map_c, _map_r = st.columns([1, 4, 1])
-    with _map_c:
         st.markdown(
             f"""
             <div style="border:1px solid #DDD9D0; border-radius:10px;
@@ -534,7 +579,7 @@ with tab_home:
         )
         _locator = folium.Map(
             location=[42.0308, -93.6319],
-            zoom_start=11,
+            zoom_start=6,
             tiles="CartoDB positron",
             zoom_control=False,
             scrollWheelZoom=False,
@@ -553,12 +598,12 @@ with tab_home:
             ),
             icon=folium.Icon(color="darkgreen", icon="home", prefix="fa"),
         ).add_to(_locator)
-        st_folium(_locator, height=320, use_container_width=True)
+        st_folium(_locator, height=260, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
         st.markdown(
             f"<p style='text-align:center; font-size:0.75rem; color:{SAGE}; "
             f"margin-top:0.3rem; margin-bottom:0.4rem;'>"
-            f"Ames, Iowa &mdash; Story County, central Iowa</p>",
+            f"Ames, Iowa &mdash; located in central Iowa, about 30 miles north of Des Moines</p>",
             unsafe_allow_html=True,
         )
 
@@ -569,14 +614,15 @@ with tab_home:
 
     # ── SIGHTSEEING IN AMES ─────────────────────────────────────────────────
     st.markdown(
-        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+        f"<p style='font-size:1.1rem; font-weight:700; letter-spacing:0.13em; "
         f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>"
         f"Sightseeing in Ames</p>",
         unsafe_allow_html=True,
     )
     st.markdown(
         f"<p style='font-size:0.88rem; color:{CHARCOAL}; margin-bottom:0.9rem; "
-        f"line-height:1.6;'>Beyond the housing market, Ames has plenty worth seeing.</p>",
+        f"line-height:1.6;'>A home's value isn't just square footage — it's the community around it. "
+        f"Here's a taste of what makes Ames worth living in.</p>",
         unsafe_allow_html=True,
     )
 
@@ -658,7 +704,7 @@ with tab_home:
 
     # ── DID YOU KNOW? FACT CARDS ────────────────────────────────────────────
     st.markdown(
-        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+        f"<p style='font-size:1.1rem; font-weight:700; letter-spacing:0.13em; "
         f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.9rem;'>"
         f"Did You Know?</p>",
         unsafe_allow_html=True,
@@ -670,7 +716,7 @@ with tab_home:
         f"box-shadow:0 2px 8px rgba(43,43,40,0.07); height:100%;"
     )
 
-    fc1, fc2, fc3, fc4 = st.columns(4, gap="medium")
+    fc1, fc2, fc3 = st.columns(3, gap="medium")
 
     with fc1:
         st.markdown(
@@ -717,20 +763,6 @@ with tab_home:
             unsafe_allow_html=True,
         )
 
-    with fc4:
-        st.markdown(
-            f"<div style='{_fc_base}'>"
-            f"<div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em; "
-            f"  color:{SAGE}; text-transform:uppercase; margin-bottom:0.55rem;'>"
-            f"  Area vs Price</div>"
-            f"<div style='font-size:1.55rem; font-weight:800; color:{OLIVE}; "
-            f"  letter-spacing:-0.02em; line-height:1.1; margin-bottom:0.5rem;'>"
-            f"  r = 0.71</div>"
-            f"<div style='font-size:0.78rem; color:{CHARCOAL}; line-height:1.55; "
-            f"  opacity:0.75;'>Correlation between living area and sale price</div>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
 
     st.markdown(
         f"<hr style='border-color:{SAGE}; opacity:0.35; margin:2rem 0;'>",
@@ -739,7 +771,7 @@ with tab_home:
 
     # ── WHAT THIS APP DOES ──────────────────────────────────────────────────
     st.markdown(
-        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+        f"<p style='font-size:1.1rem; font-weight:700; letter-spacing:0.13em; "
         f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.9rem;'>"
         f"What This App Does</p>",
         unsafe_allow_html=True,
@@ -804,15 +836,15 @@ with tab_home:
         f"""
         <div style="background:{CREAM}; border:1.5px solid {SAGE};
                     border-left:5px solid {OLIVE}; border-radius:10px;
-                    padding:1.4rem 1.8rem;">
-          <div style="font-size:1.05rem; font-weight:700; color:{CHARCOAL};
-                      margin-bottom:0.35rem;">
-            Ready to see what your home could be worth?
+                    padding:1.6rem 1.8rem;">
+          <div style="font-size:1.1rem; font-weight:700; color:{CHARCOAL};
+                      margin-bottom:0.4rem;">
+            Ready to see your number?
           </div>
-          <div style="font-size:0.88rem; color:{CHARCOAL}; opacity:0.75;
-                      line-height:1.6;">
+          <div style="font-size:0.92rem; color:{CHARCOAL}; opacity:0.80;
+                      line-height:1.65;">
             Head to the <strong style="color:{OLIVE};">Predict</strong> tab above
-            and enter your property details — it takes under a minute.
+            and get your estimate in under a minute.
           </div>
         </div>
         """,
@@ -852,6 +884,41 @@ NEIGHBORHOOD_NAMES = {
 _NAME_TO_CODE = {v: k for k, v in NEIGHBORHOOD_NAMES.items()}
 
 with tab_predict:
+    # ── ANALYTICS HEADLINE ──────────────────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.22em; "
+        f"color:{OLIVE}; text-transform:uppercase; margin:0 0 0.7rem 0;'>"
+        f"Predictive Analytics</p>"
+        f"<h2 style='font-size:2.0rem; font-weight:800; color:{CHARCOAL}; "
+        f"letter-spacing:-0.025em; line-height:1.25; margin:0 0 0.8rem 0;'>"
+        f"Precision Pricing for Ames Homes.<br>Stop Guessing. Start Predicting.</h2>"
+        f"<p style='font-size:1.05rem; font-weight:800; color:{OLIVE}; letter-spacing:0.06em; "
+        f"text-transform:uppercase; margin:0 0 0.6rem 0;'>"
+        f"Key Factors Influencing Home Prices in Ames:</p>",
+        unsafe_allow_html=True,
+    )
+    _cl_l, _cl_r = st.columns(2, gap="large")
+    with _cl_l:
+        st.markdown(
+            _checklist_html([
+                "neighborhood quality and location",
+                "number of bedrooms",
+            ]),
+            unsafe_allow_html=True,
+        )
+    with _cl_r:
+        st.markdown(
+            _checklist_html([
+                "living area (sq ft)",
+                "year built",
+            ]),
+            unsafe_allow_html=True,
+        )
+    st.markdown(
+        f"<hr style='border-color:{SAGE}; opacity:0.35; margin:1.8rem 0 2rem 0;'>",
+        unsafe_allow_html=True,
+    )
+
     st.markdown(
         f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
         f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>"
@@ -1025,6 +1092,285 @@ with tab_predict:
             f"<p style='font-size:0.78rem; color:#AAA; margin-top:1rem; line-height:1.5;'>"
             f"Statistical estimate based on Ames, Iowa sales data (2006–2010). "
             f"Not a certified appraisal — do not use as the sole basis for financial decisions.</p>",
+            unsafe_allow_html=True,
+        )
+
+        # ── Investment Insights ──────────────────────────────────────────────
+        st.markdown(
+            f"<hr style='border:none; border-top:1px solid {SAGE}; opacity:0.35; margin:2.2rem 0 1.8rem 0;'>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+            f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.9rem;'>"
+            f"Investment Insights</p>",
+            unsafe_allow_html=True,
+        )
+
+        # ── Heuristic scoring ────────────────────────────────────────────────
+        _nbhd_code   = _NAME_TO_CODE[neighborhood_full]
+        _nbhd_tier   = NEIGHBORHOOD_INFO[_nbhd_code][2]   # "Premium"|"Mid-Range"|"Budget"
+        _AMES_MEDIAN = 163_000   # training-set median sale price
+        _AMES_AVG_SF = 1_500     # approximate dataset mean above-ground living area
+
+        _score = 0
+        if overall_qual >= 7:            _score += 1
+        if overall_qual >= 9:            _score += 1
+        if gr_liv_area >= _AMES_AVG_SF:  _score += 1
+        if premium_label == 1:           _score += 1
+        if predicted_price >= _AMES_MEDIAN: _score += 1
+        if _nbhd_tier == "Premium":      _score += 1
+        elif _nbhd_tier == "Budget":     _score -= 1
+        _score = max(0, min(_score, 6))
+
+        if _score >= 4:
+            _inv_level = "HIGH"
+            _inv_color = OLIVE
+            _inv_desc  = "Strong investment fundamentals across quality, location, and price."
+        elif _score >= 2:
+            _inv_level = "MEDIUM"
+            _inv_color = CHARCOAL
+            _inv_desc  = "Moderate investment characteristics with some supporting factors."
+        else:
+            _inv_level = "LOW"
+            _inv_color = SAGE
+            _inv_desc  = "Limited investment upside at current market levels."
+
+        _price_diff_pct = ((predicted_price - _AMES_MEDIAN) / _AMES_MEDIAN) * 100
+        if _price_diff_pct > 0:
+            _price_vs_avg = f"{_price_diff_pct:.0f}% above Ames average"
+        elif _price_diff_pct < 0:
+            _price_vs_avg = f"{abs(_price_diff_pct):.0f}% below Ames average"
+        else:
+            _price_vs_avg = "At Ames average"
+
+        if _score >= 4:
+            _resale = "Strong"
+        elif _score >= 2:
+            _resale = "Moderate"
+        else:
+            _resale = "Limited"
+
+        # ── Row 1: Investment Potential card ─────────────────────────────────
+        _ii_left, _ii_right = st.columns([1, 2], gap="large")
+
+        with _ii_left:
+            st.markdown(
+                f"""
+                <div style='background:{WHITE}; border:1px solid #DDD9D0;
+                            border-left:4px solid {_inv_color};
+                            border-radius:0 10px 10px 0; padding:1.6rem 1.4rem;'>
+                  <div style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em;
+                              color:{SAGE}; text-transform:uppercase; margin-bottom:0.6rem;'>
+                    Investment Potential
+                  </div>
+                  <div style='font-size:2.1rem; font-weight:800; color:{_inv_color};
+                              letter-spacing:-0.01em; line-height:1.1; margin-bottom:0.5rem;'>
+                    {_inv_level}
+                  </div>
+                  <div style='font-size:0.82rem; color:{CHARCOAL}; line-height:1.6;'>
+                    {_inv_desc}
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        # ── Row 1: Market Positioning cards ──────────────────────────────────
+        with _ii_right:
+            _mp1, _mp2, _mp3 = st.columns(3, gap="medium")
+            with _mp1:
+                st.markdown(
+                    f"""
+                    <div style='background:{WHITE}; border:1px solid #DDD9D0;
+                                border-radius:10px; padding:1.3rem 1.0rem; text-align:center;'>
+                      <div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em;
+                                  color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
+                        Price vs Ames Avg
+                      </div>
+                      <div style='font-size:0.9rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
+                        {_price_vs_avg}
+                      </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            with _mp2:
+                st.markdown(
+                    f"""
+                    <div style='background:{WHITE}; border:1px solid #DDD9D0;
+                                border-radius:10px; padding:1.3rem 1.0rem; text-align:center;'>
+                      <div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em;
+                                  color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
+                        Neighborhood Tier
+                      </div>
+                      <div style='font-size:0.9rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
+                        {_nbhd_tier}
+                      </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            with _mp3:
+                st.markdown(
+                    f"""
+                    <div style='background:{WHITE}; border:1px solid #DDD9D0;
+                                border-radius:10px; padding:1.3rem 1.0rem; text-align:center;'>
+                      <div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em;
+                                  color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
+                        Resale Strength
+                      </div>
+                      <div style='font-size:0.9rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
+                        {_resale}
+                      </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+        # ── How Investment Potential is calculated (unified card) ────────────
+        if _inv_level == "HIGH":
+            _reasoning_bullets = [
+                "strong neighborhood demand",
+                "premium-market positioning",
+                "above-average quality and size",
+                "strong resale potential",
+            ]
+        elif _inv_level == "MEDIUM":
+            _reasoning_bullets = [
+                "balanced neighborhood positioning",
+                "moderate resale strength",
+                "average market pricing",
+                "solid but not premium market characteristics",
+            ]
+        else:
+            _reasoning_bullets = [
+                "below-average pricing position",
+                "weaker resale indicators",
+                "limited premium-market signals",
+            ]
+
+        _reason_bullet_html = "".join(
+            f"<div style='display:flex; align-items:flex-start; margin-bottom:0.35rem;'>"
+            f"<span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem; flex-shrink:0;'>&#8226;</span>"
+            f"<span style='font-size:0.86rem; color:{CHARCOAL}; line-height:1.6;'>{b}</span>"
+            f"</div>"
+            for b in _reasoning_bullets
+        )
+
+        st.markdown(
+            f"""
+            <div style='background:{WHITE}; border:1px solid #DDD9D0;
+                        border-left:4px solid {OLIVE}; border-radius:0 10px 10px 0;
+                        padding:1.8rem 1.7rem; margin-top:1.0rem;'>
+
+              <!-- ── header ── -->
+              <div style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em;
+                          color:{SAGE}; text-transform:uppercase; margin-bottom:0.75rem;'>
+                How Investment Potential is Calculated
+              </div>
+              <p style='font-size:0.88rem; color:{CHARCOAL}; line-height:1.75; margin:0 0 1.1rem 0;'>
+                This is not a separate machine learning model. The investment potential is a
+                rule-based interpretation layer built on top of the model output and Ames
+                housing market patterns.
+              </p>
+
+              <!-- ── divider ── -->
+              <div style='height:1px; background:#DDD9D0; margin-bottom:1.1rem;'></div>
+
+              <!-- ── score factors ── -->
+              <div style='font-size:0.72rem; font-weight:700; letter-spacing:0.1em;
+                          color:{CHARCOAL}; text-transform:uppercase; margin-bottom:0.65rem;'>
+                The score is based on:
+              </div>
+              <div style='display:flex; gap:2rem; margin-bottom:1.2rem;'>
+                <div style='flex:1;'>
+                  <div style='display:flex; align-items:flex-start; margin-bottom:0.4rem;'>
+                    <span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem; flex-shrink:0;'>&#10003;</span>
+                    <span style='font-size:0.86rem; color:{CHARCOAL}; line-height:1.6;'>predicted sale price</span>
+                  </div>
+                  <div style='display:flex; align-items:flex-start; margin-bottom:0.4rem;'>
+                    <span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem; flex-shrink:0;'>&#10003;</span>
+                    <span style='font-size:0.86rem; color:{CHARCOAL}; line-height:1.6;'>premium-home prediction</span>
+                  </div>
+                  <div style='display:flex; align-items:flex-start;'>
+                    <span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem; flex-shrink:0;'>&#10003;</span>
+                    <span style='font-size:0.86rem; color:{CHARCOAL}; line-height:1.6;'>neighborhood market tier</span>
+                  </div>
+                </div>
+                <div style='flex:1;'>
+                  <div style='display:flex; align-items:flex-start; margin-bottom:0.4rem;'>
+                    <span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem; flex-shrink:0;'>&#10003;</span>
+                    <span style='font-size:0.86rem; color:{CHARCOAL}; line-height:1.6;'>overall quality</span>
+                  </div>
+                  <div style='display:flex; align-items:flex-start; margin-bottom:0.4rem;'>
+                    <span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem; flex-shrink:0;'>&#10003;</span>
+                    <span style='font-size:0.86rem; color:{CHARCOAL}; line-height:1.6;'>above-ground living area</span>
+                  </div>
+                  <div style='display:flex; align-items:flex-start;'>
+                    <span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem; flex-shrink:0;'>&#10003;</span>
+                    <span style='font-size:0.86rem; color:{CHARCOAL}; line-height:1.6;'>price position vs. Ames average</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── divider ── -->
+              <div style='height:1px; background:#DDD9D0; margin-bottom:1.1rem;'></div>
+
+              <!-- ── classification rows ── -->
+              <div style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em;
+                          color:{SAGE}; text-transform:uppercase; margin-bottom:0.75rem;'>
+                Classification
+              </div>
+              <div style='border:1px solid #DDD9D0; border-radius:8px; overflow:hidden; margin-bottom:1.1rem;'>
+                <div style='display:flex; align-items:center; padding:0.65rem 0.9rem;
+                            border-bottom:1px solid #DDD9D0;'>
+                  <span style='font-size:0.82rem; font-weight:800; color:{SAGE};
+                               min-width:5.5rem; flex-shrink:0;'>LOW</span>
+                  <span style='font-size:0.82rem; color:{CHARCOAL}; line-height:1.5;'>
+                    weaker market positioning or below-average investment signals
+                  </span>
+                </div>
+                <div style='display:flex; align-items:center; padding:0.65rem 0.9rem;
+                            border-bottom:1px solid #DDD9D0;'>
+                  <span style='font-size:0.82rem; font-weight:800; color:{CHARCOAL};
+                               min-width:5.5rem; flex-shrink:0;'>MEDIUM</span>
+                  <span style='font-size:0.82rem; color:{CHARCOAL}; line-height:1.5;'>
+                    balanced property profile with moderate resale potential
+                  </span>
+                </div>
+                <div style='display:flex; align-items:center; padding:0.65rem 0.9rem;'>
+                  <span style='font-size:0.82rem; font-weight:800; color:{OLIVE};
+                               min-width:5.5rem; flex-shrink:0;'>HIGH</span>
+                  <span style='font-size:0.82rem; color:{CHARCOAL}; line-height:1.5;'>
+                    strong neighborhood, quality, size, and premium-market characteristics
+                  </span>
+                </div>
+              </div>
+
+              <!-- ── dynamic reasoning ── -->
+              <div style='background:{CREAM}; border-radius:8px; padding:1.0rem 1.1rem;
+                          margin-bottom:1.1rem;'>
+                <div style='font-size:0.72rem; font-weight:700; letter-spacing:0.1em;
+                            color:{SAGE}; text-transform:uppercase; margin-bottom:0.6rem;'>
+                  Why this property is classified as {_inv_level}
+                </div>
+                {_reason_bullet_html}
+              </div>
+
+              <!-- ── divider ── -->
+              <div style='height:1px; background:#DDD9D0; margin-bottom:0.9rem;'></div>
+
+              <!-- ── disclaimer ── -->
+              <p style='font-size:0.75rem; color:#AAA; line-height:1.6;
+                        font-style:italic; margin:0;'>
+                Investment Insights are explanatory business logic only and should not be
+                interpreted as financial advice or as a separately trained investment
+                prediction model.
+              </p>
+
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 

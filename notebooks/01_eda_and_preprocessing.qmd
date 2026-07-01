@@ -1,0 +1,736 @@
+---
+jupyter: ames-venv
+---
+
+```{python}
+# PART 1: UNDERSTAND & CLEAN THE DATA
+# PART 1: A1 - Load & Inspect 
+import pandas as pd
+
+df = pd.read_excel("../data/AmesHousing-2.xls")
+
+df.head()
+```
+
+```{python}
+#Shape check confirms 2,930 rows × 82 columns — matches the dataset's known size exactly, so the load is correct.
+df.shape
+```
+
+```{python}
+# how many columns are numbers vs. text 
+print("Numeric columns:", df.select_dtypes(include="number").shape[1])
+
+print("Categorical columns:", df.select_dtypes(include="object").shape[1])
+
+df.dtypes.value_counts()
+```
+
+```{python}
+#which columns have missing values, worst first
+# 27 columns have missing values. 
+#The top offenders (Pool QC, Misc Feature, Alley, Fence) are not really “missing” in the broken sense
+#they are NaN because the house simply doesn't have that feature (no pool, no alley access, etc.).
+#This distinction drives later the cleaning strategy 
+missing = df.isna().sum().sort_values(ascending=False)
+
+missing = missing[missing > 0]
+
+print(f"{len(missing)} columns have missing values")
+
+missing.head(15)
+```
+
+```{python}
+# PART 1: A2 - EDA — Distributions, Target Analysis, Correlation, Feature–Target Relationships
+# Target analysis (analyzing the variable you are trying to predict) - SalePrice summary 
+df["SalePrice"].describe()
+```
+
+```{python}
+#EDA look at the shape of SalePrice (Distribution: SalePrice histogram)
+# SalePrice is right-skewed, piling up around $130k–200k with a long tail to $700k+. 
+# This happens because price has a hard floor near $0 but no real ceiling. 
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(10,6))
+
+sns.histplot(df["SalePrice"], kde=True)
+
+plt.title("SalePrice Distribution")
+
+plt.xlabel("SalePrice")
+
+plt.ylabel("Count")
+
+plt.show()
+```
+
+```{python}
+#Correlation study
+correlation = df.corr(numeric_only=True)["SalePrice"].sort_values(ascending=False)
+
+correlation.head(10)
+```
+
+```{python}
+premium_threshold = df["SalePrice"].quantile(0.75)
+print("Premium threshold:", premium_threshold)
+```
+
+```{python}
+# EDA - Overall Qual vs SalePrice (Feature-target relationships)
+# Overall Qual (0.80) and Gr Liv Area (0.71) are by far the strongest single predictors of price, 
+# followed by garage size and basement size. 
+# This ranking directly shaped which engineered features were prioritized in Part B 
+# (e.g. an Overall Qual × size interaction).
+
+plt.figure(figsize=(9,5))
+sns.boxplot(x="Overall Qual", y="SalePrice", data=df)
+plt.title("SalePrice by Overall Quality")
+plt.xlabel("Overall Qual (1=worst, 10=best)")
+plt.ylabel("SalePrice")
+plt.show()
+```
+
+```{python}
+# Eda, step 3 out of 3 Heatmap next — visual version of the correlation table
+plt.figure(figsize=(12,9))
+top_corr_cols = correlation.head(15).index  # top 15 features most correlated with SalePrice
+sns.heatmap(df[top_corr_cols].corr(), annot=True, fmt=".2f", cmap="coolwarm")
+plt.title("Correlation Heatmap — Top Features vs SalePrice")
+plt.show()
+```
+
+```{python}
+#EDA visualization  a scatter plot of Gr Liv Area vs SalePrice. 
+# :  Three points stand out clearly: homes with 4,600–5,600 sq ft of living area that sold for under $200,000 
+# far below what their size predicts. All three also have Overall Qual = 10, later removed. 
+plt.figure(figsize=(8,6))
+plt.scatter(df["Gr Liv Area"], df["SalePrice"], alpha=0.4)
+plt.xlabel("Gr Liv Area (sq ft)")
+plt.ylabel("SalePrice")
+plt.title("SalePrice vs Living Area")
+plt.show()
+```
+
+```{python}
+#PART 3: A3 - Clean - missing values
+none_means_missing = [
+    "Pool QC", "Misc Feature", "Alley", "Fence", "Fireplace Qu",
+    "Garage Type", "Garage Finish", "Garage Qual", "Garage Cond",
+    "Bsmt Qual", "Bsmt Cond", "Bsmt Exposure", "BsmtFin Type 1", "BsmtFin Type 2",
+    "Mas Vnr Type"
+]
+
+for col in none_means_missing:
+    df[col] = df[col].fillna("None")
+
+print("Remaining missing values:")
+df.isna().sum()[df.isna().sum() > 0].sort_values(ascending=False)
+```
+
+```{python}
+# Missing values 
+#If a house has no garage/basement, these should be 0. 
+zero_means_missing = [
+    "Garage Yr Blt", "Mas Vnr Area", "Bsmt Full Bath", "Bsmt Half Bath",
+    "BsmtFin SF 1", "BsmtFin SF 2", "Bsmt Unf SF", "Total Bsmt SF",
+    "Garage Cars", "Garage Area"
+]
+for col in zero_means_missing:
+    df[col] = df[col].fillna(0)
+
+print("Remaining missing values:")
+df.isna().sum()[df.isna().sum() > 0].sort_values(ascending=False)
+# Lot Frontage (490 missing) and Electrical (1 missing) are genuinely unrecorded values, not “doesn't exist” cases. 
+# Filling them with a median/most-common value calculated now would leak information from what will become the test set. 
+# These two are filled later, inside the leakage-safe preprocessing Pipeline, 
+# using statistics computed from the training split only (SimpleImputer with strategy=“median” / “most_frequent”).
+```
+
+```{python}
+# Detect and treat outliers
+outliers = df[(df["Gr Liv Area"] > 4000) & (df["SalePrice"] < 300000)]
+print(f"Found {len(outliers)} outlier rows:")
+outliers[["Gr Liv Area", "SalePrice", "Overall Qual"]]
+
+#The same 3 anomalous sales spotted visually in the Gr Liv Area scatter plot,
+# now formally identified and removed using a documented rule (Gr Liv Area > 4,000 sq ft and SalePrice < $300,000).
+```
+
+```{python}
+# Removing outliers (overall quality too high)
+df = df.drop(outliers.index).reset_index(drop=True)
+print("New shape after removing outliers:", df.shape)
+```
+
+```{python}
+print(df.shape)
+df.columns.tolist()
+```
+
+```{python}
+# PART 2: ENGINEER & SELECT FEATURES
+# PART 2: B1 - Creating engineered features 
+
+# Total finished square footage — combines basement + both floors
+df["TotalSF"] = df["Total Bsmt SF"] + df["1st Flr SF"] + df["2nd Flr SF"]
+
+# Age of the house at time of sale (domain logic)
+df["HouseAge"] = df["Yr Sold"] - df["Year Built"]
+
+# Years since last remodel at time of sale
+df["RemodAge"] = df["Yr Sold"] - df["Year Remod/Add"]
+
+# Total bathrooms, weighting half-baths as 0.5 (standard real-estate convention)
+df["TotalBath"] = (
+    df["Full Bath"] + 0.5*df["Half Bath"] +
+    df["Bsmt Full Bath"] + 0.5*df["Bsmt Half Bath"]
+)
+
+# Interaction: quality × size — captures that a big AND nice house is worth more than either alone
+df["Qual_x_SF"] = df["Overall Qual"] * df["TotalSF"]
+
+print("New shape:", df.shape)
+df[["TotalSF", "HouseAge", "RemodAge", "TotalBath", "Qual_x_SF"]].describe()
+```
+
+```{python}
+# Investigated rather than ignored: exactly 1 row (built 2007, sold 2007, “remodeled” 2008) had a logically impossible negative RemodAge.
+# Clipped at 0 rather than dropping the row,
+# since every other field for that house was valid — a minimal, defensible fix.
+
+df["RemodAge"] = df["RemodAge"].clip(lower=0)
+print("Min RemodAge now:", df["RemodAge"].min())
+```
+
+```{python}
+df[["TotalSF", "HouseAge", "RemodAge", "TotalBath", "Qual_x_SF"]].describe()
+```
+
+```{python}
+# Age boundaries 
+df["AgeCategory"] = pd.cut(
+    df["HouseAge"],
+    bins=[-1, 10, 30, 60, 200],
+    labels=["New (0-10y)", "Recent (10-30y)", "Established (30-60y)", "Old (60y+)"]
+)
+
+print(df["AgeCategory"].value_counts())
+```
+
+```{python}
+#Adding additional features (outdoor space and amenity flags)
+df["TotalPorchSF"] = (
+    df["Open Porch SF"] + df["Enclosed Porch"] +
+    df["3Ssn Porch"] + df["Screen Porch"] + df["Wood Deck SF"]
+)
+
+df["HasPool"] = (df["Pool Area"] > 0).astype(int)
+df["HasGarage"] = (df["Garage Area"] > 0).astype(int)
+df["HasFireplace"] = (df["Fireplaces"] > 0).astype(int)
+df["Has2ndFloor"] = (df["2nd Flr SF"] > 0).astype(int)
+
+print(df[["TotalPorchSF","HasPool","HasGarage","HasFireplace","Has2ndFloor"]].describe())
+```
+
+```{python}
+# PART C - SPLIT & VALIDATE PROPELY, and applying one feature selection (Lasso INSIDE a Pipeline)
+# Part C - C1 - Train & split
+# 80/20 split, stratified by SalePrice quartile bins rather than premium_home directly 
+
+from sklearn.model_selection import train_test_split
+
+RANDOM_STATE = 42
+
+# Bin SalePrice into quartiles, purely to balance the split — not used as a feature or target
+price_bins = pd.qcut(df["SalePrice"], q=4, labels=False)
+
+train_df, test_df = train_test_split(
+    df, test_size=0.2, random_state=RANDOM_STATE, stratify=price_bins
+)
+
+print("Train shape:", train_df.shape)
+print("Test shape:", test_df.shape)
+```
+
+```{python}
+# C2 - Deriving premium_home (leakage-safe)
+# Compute the threshold using ONLY the training rows
+premium_threshold = train_df["SalePrice"].quantile(0.75)
+print("Premium threshold (from train only):", premium_threshold)
+
+# Apply that exact same number to both sets
+train_df = train_df.copy()
+test_df = test_df.copy()
+train_df["premium_home"] = (train_df["SalePrice"] > premium_threshold).astype(int)
+test_df["premium_home"] = (test_df["SalePrice"] > premium_threshold).astype(int)
+
+print("\nTrain premium_home distribution:")
+print(train_df["premium_home"].value_counts(normalize=True).round(3))
+print("\nTest premium_home distribution:")
+print(test_df["premium_home"].value_counts(normalize=True).round(3))
+```
+
+```{python}
+# C3 - Building X/Y and the preprocessing pipeline
+#  Separate features (X) from targets (y)
+# Drop targets and ID-like columns from the feature set
+drop_cols = ["SalePrice", "premium_home", "Order", "PID"]
+
+X_train = train_df.drop(columns=drop_cols)
+X_test = test_df.drop(columns=drop_cols)
+
+# Regression target
+y_train_reg = train_df["SalePrice"]
+y_test_reg = test_df["SalePrice"]
+
+# Classification target
+y_train_clf = train_df["premium_home"]
+y_test_clf = test_df["premium_home"]
+
+print("X_train shape:", X_train.shape)
+print("X_test shape:", X_test.shape) 
+```
+
+```{python}
+#2  Tell the Pipeline which columns are numeric vs. categorical
+numeric_cols = X_train.select_dtypes(include="number").columns.tolist()
+categorical_cols = X_train.select_dtypes(exclude="number").columns.tolist()
+
+print(f"{len(numeric_cols)} numeric columns")
+print(f"{len(categorical_cols)} categorical columns")
+print("\nCategorical columns:", categorical_cols)
+```
+
+```{python}
+# MS SubClass is stored as a number but is actually a category code, not a true numeric scale
+numeric_cols.remove("MS SubClass")
+categorical_cols.append("MS SubClass")
+
+print(f"{len(numeric_cols)} numeric columns")
+print(f"{len(categorical_cols)} categorical columns")
+```
+
+```{python}
+# Leakage-safe preprocessing Pipeline -- fit ONLY on X_train, never on the full df
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+# Numeric pipeline: fill missing values with median, then scale
+numeric_transformer = Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="median")),
+    ("scaler", StandardScaler())
+])
+
+# Categorical pipeline: fill missing values with the most frequent category, then one-hot encode
+categorical_transformer = Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="most_frequent")),
+    ("encoder", OneHotEncoder(handle_unknown="ignore"))
+])
+
+# Combine both into one preprocessor
+preprocessor = ColumnTransformer(transformers=[
+    ("num", numeric_transformer, numeric_cols),
+    ("cat", categorical_transformer, categorical_cols)
+])
+
+print("Preprocessor built. It will be fit only on X_train when used inside a model Pipeline.")
+```
+
+```{python}
+# Parts 2 & 3: D1- Baseline - DummyRegressor / DummyClassifier
+# Regression & Classification baseline 
+
+from sklearn.dummy import DummyRegressor, DummyClassifier
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error, accuracy_score
+
+# --- Regression baseline ---
+reg_baseline = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", DummyRegressor(strategy="mean"))
+])
+reg_baseline.fit(X_train, y_train_reg)
+pred_reg = reg_baseline.predict(X_test)
+
+print("=== Regression Baseline (Dummy) ===")
+print("R²:", round(r2_score(y_test_reg, pred_reg), 4))
+print("MAE:", round(mean_absolute_error(y_test_reg, pred_reg), 2))
+print("RMSE:", round(mean_squared_error(y_test_reg, pred_reg) ** 0.5, 2))
+
+# --- Classification baseline ---
+clf_baseline = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", DummyClassifier(strategy="most_frequent"))
+])
+clf_baseline.fit(X_train, y_train_clf)
+pred_clf = clf_baseline.predict(X_test)
+
+print("\n=== Classification Baseline (Dummy) ===")
+print("Accuracy:", round(accuracy_score(y_test_clf, pred_clf), 4))
+# The floor every real model must beat. Regression R² ≈ 0 (predicting the average price every time explains none of the variance, by design).
+# Classification accuracy ≈ 75% — simply matches the dataset's 75/25 class split by always guessing the majority class, without learning anything.
+```
+
+```{python}
+#D2: Linear Model - Linear Regression/ Logistic Regression
+from sklearn.linear_model import LinearRegression, LogisticRegression
+
+# --- Regression: Linear Regression (Sale's price)---
+reg_linear = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", LinearRegression())
+])
+reg_linear.fit(X_train, y_train_reg)
+pred_reg_lin = reg_linear.predict(X_test)
+
+print("=== Regression: Linear Regression ===")
+print("R²:", round(r2_score(y_test_reg, pred_reg_lin), 4))
+print("MAE:", round(mean_absolute_error(y_test_reg, pred_reg_lin), 2))
+print("RMSE:", round(mean_squared_error(y_test_reg, pred_reg_lin) ** 0.5, 2))
+
+# --- Classification: Logistic Regression (Premium Home) ---
+clf_logistic = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", LogisticRegression(max_iter=1000, random_state=RANDOM_STATE))
+])
+clf_logistic.fit(X_train, y_train_clf)
+pred_clf_log = clf_logistic.predict(X_test)
+
+print("\n=== Classification: Logistic Regression ===")
+print("Accuracy:", round(accuracy_score(y_test_clf, pred_clf_log), 4))
+```
+
+```{python}
+from sklearn.linear_model import Lasso
+
+# Fit Lasso INSIDE a Pipeline, on training data only -- same leakage-safe pattern as before
+lasso_selector = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", Lasso(alpha=100, random_state=RANDOM_STATE, max_iter=5000))
+])
+lasso_selector.fit(X_train, y_train_reg)
+
+# Pull out the feature names after preprocessing (one-hot encoding creates many new column names)
+feature_names = (
+    numeric_cols +
+    list(lasso_selector.named_steps["preprocessor"]
+         .named_transformers_["cat"]
+         .named_steps["encoder"]
+         .get_feature_names_out(categorical_cols))
+)
+
+coefs = lasso_selector.named_steps["model"].coef_
+nonzero = sum(coefs != 0)
+
+print(f"Lasso kept {nonzero} out of {len(coefs)} features (rest shrunk to exactly 0)")
+
+# Show the 15 most influential surviving features
+coef_df = pd.DataFrame({"feature": feature_names, "coefficient": coefs})
+coef_df = coef_df[coef_df["coefficient"] != 0].sort_values("coefficient", key=abs, ascending=False)
+coef_df.head(15)
+```
+
+```{python}
+#D3 - Decision Tree (and where it overfits)
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+
+# --- Regression: Decision Tree ---
+reg_tree = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", DecisionTreeRegressor(random_state=RANDOM_STATE))
+])
+reg_tree.fit(X_train, y_train_reg)
+pred_reg_tree_train = reg_tree.predict(X_train)
+pred_reg_tree_test = reg_tree.predict(X_test)
+
+print("=== Regression: Decision Tree ===")
+print("Train R²:", round(r2_score(y_train_reg, pred_reg_tree_train), 4))
+print("Test R²:", round(r2_score(y_test_reg, pred_reg_tree_test), 4))
+print("Test MAE:", round(mean_absolute_error(y_test_reg, pred_reg_tree_test), 2))
+
+# --- Classification: Decision Tree ---
+clf_tree = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", DecisionTreeClassifier(random_state=RANDOM_STATE))
+])
+clf_tree.fit(X_train, y_train_clf)
+pred_clf_tree_train = clf_tree.predict(X_train)
+pred_clf_tree_test = clf_tree.predict(X_test)
+
+print("\n=== Classification: Decision Tree ===")
+print("Train Accuracy:", round(accuracy_score(y_train_clf, pred_clf_tree_train), 4))
+print("Test Accuracy:", round(accuracy_score(y_test_clf, pred_clf_tree_test), 4))
+```
+
+```{python}
+# Overfitting - 
+#Where the Decision Tree overfits:
+#Test R² peaks at max_depth≈5 (~0.865) and then gets worse as the tree is allowed to grow deeper, 
+#while train R² keeps climbing all the way to a perfect 1.0. This means the tree starts overfitting beyond depth≈5 — past that point, it's no longer learning real price patterns, it's just memorizing individual training houses. The unrestricted tree (no depth limit) confirms this: train R²=1.0 vs. test R²=0.83 for regression, and train accuracy=1.0 vs. test accuracy=0.9249 for classification — both gaps are clear, measurable evidence of overfitting.
+
+from sklearn.model_selection import validation_curve
+
+# We sweep max_depth (the tree's complexity knob) and watch train vs test R²
+# at each setting -- this shows us exactly where the tree starts memorizing
+# training data instead of learning a generalizable pattern (overfitting).
+depths = [2, 3, 5, 7, 10, 15, 20, None]
+train_scores, test_scores = [], []
+
+for d in depths:
+    # Build a fresh tree at this depth, wrapped in our same leakage-safe Pipeline
+    tree = Pipeline(steps=[
+        ("preprocessor", preprocessor),
+        ("model", DecisionTreeRegressor(max_depth=d, random_state=RANDOM_STATE))
+    ])
+    tree.fit(X_train, y_train_reg)
+
+    # Score on training data (what the tree has seen) and test data (what it hasn't)
+    train_scores.append(r2_score(y_train_reg, tree.predict(X_train)))
+    test_scores.append(r2_score(y_test_reg, tree.predict(X_test)))
+
+x_labels = [str(d) if d else "None" for d in depths]  # "None" = no depth limit at all
+
+# Plot both curves together -- the GAP between them is the overfitting signal
+plt.figure(figsize=(9,5))
+plt.plot(x_labels, train_scores, "b-o", label="Train R²")
+plt.plot(x_labels, test_scores, "r-o", label="Test R²")
+plt.xlabel("max_depth")
+plt.ylabel("R²")
+plt.title("Decision Tree: Train vs Test R² by Depth (Overfitting Curve)")
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.show()
+
+# Interpretation guide:
+# - Shallow depth (e.g. 2-3): both scores lower -> underfitting, tree too simple to capture the pattern
+# - Moderate depth: train and test scores stay close together -> good fit, generalizes well
+# - Deep / unlimited depth: train R² approaches 1.0 while test R² drops or flattens -> overfitting,
+#   the tree is memorizing individual training houses rather than learning real price relationships
+print("Interpretation:")
+print("- Shallow depth (e.g. 2-3): both scores lower (underfitting)")
+print("- Moderate depth: train and test close together (good fit)")
+print("- Deep / unlimited: train R² near 1.0, test R² drops or plateaus (overfitting)")
+```
+
+```{python}
+#D4: XGBoost - with cross-validation and hyperparameter tuning
+from xgboost import XGBRegressor, XGBClassifier
+
+# --- Regression: XGBoost ---
+reg_xgb = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", XGBRegressor(random_state=RANDOM_STATE, n_estimators=200, max_depth=4, learning_rate=0.1))
+])
+reg_xgb.fit(X_train, y_train_reg)
+pred_reg_xgb_train = reg_xgb.predict(X_train)
+pred_reg_xgb_test = reg_xgb.predict(X_test)
+
+print("=== Regression: XGBoost ===")
+print("Train R²:", round(r2_score(y_train_reg, pred_reg_xgb_train), 4))
+print("Test R²:", round(r2_score(y_test_reg, pred_reg_xgb_test), 4))
+print("Test MAE:", round(mean_absolute_error(y_test_reg, pred_reg_xgb_test), 2))
+
+# --- Classification: XGBoost ---
+clf_xgb = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", XGBClassifier(random_state=RANDOM_STATE, n_estimators=200, max_depth=4,
+                             learning_rate=0.1, eval_metric="logloss"))
+])
+clf_xgb.fit(X_train, y_train_clf)
+pred_clf_xgb_train = clf_xgb.predict(X_train)
+pred_clf_xgb_test = clf_xgb.predict(X_test)
+
+print("\n=== Classification: XGBoost ===")
+print("Train Accuracy:", round(accuracy_score(y_train_clf, pred_clf_xgb_train), 4))
+print("Test Accuracy:", round(accuracy_score(y_test_clf, pred_clf_xgb_test), 4))
+```
+
+```{python}
+from sklearn.model_selection import GridSearchCV
+
+# --- Regression: tune XGBoost with cross-validation ---
+reg_xgb_pipeline = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", XGBRegressor(random_state=RANDOM_STATE))
+])
+
+param_grid_reg = {
+    "model__n_estimators": [100, 200, 300],
+    "model__max_depth": [3, 4, 5],
+    "model__learning_rate": [0.05, 0.1]
+}
+
+reg_search = GridSearchCV(
+    reg_xgb_pipeline, param_grid_reg, cv=5,
+    scoring="r2", n_jobs=-1
+)
+reg_search.fit(X_train, y_train_reg)
+
+print("=== Regression: XGBoost (tuned) ===")
+print("Best params:", reg_search.best_params_)
+print("Best CV R²:", round(reg_search.best_score_, 4))
+
+best_reg_xgb = reg_search.best_estimator_
+pred_reg_xgb_tuned = best_reg_xgb.predict(X_test)
+print("Test R²:", round(r2_score(y_test_reg, pred_reg_xgb_tuned), 4))
+print("Test MAE:", round(mean_absolute_error(y_test_reg, pred_reg_xgb_tuned), 2))
+```
+
+```{python}
+# --- Classification: tune XGBoost with cross-validation ---
+clf_xgb_pipeline = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("model", XGBClassifier(random_state=RANDOM_STATE, eval_metric="logloss"))
+])
+
+param_grid_clf = {
+    "model__n_estimators": [100, 200, 300],
+    "model__max_depth": [3, 4, 5],
+    "model__learning_rate": [0.05, 0.1]
+}
+
+clf_search = GridSearchCV(
+    clf_xgb_pipeline, param_grid_clf, cv=5,
+    scoring="accuracy", n_jobs=-1
+)
+clf_search.fit(X_train, y_train_clf)
+
+print("=== Classification: XGBoost (tuned) ===")
+print("Best params:", clf_search.best_params_)
+print("Best CV Accuracy:", round(clf_search.best_score_, 4))
+
+best_clf_xgb = clf_search.best_estimator_
+pred_clf_xgb_tuned = best_clf_xgb.predict(X_test)
+print("Test Accuracy:", round(accuracy_score(y_test_clf, pred_clf_xgb_tuned), 4))
+```
+
+```{python}
+# PART 3 - Leaderboard table
+import pandas as pd
+
+leaderboard_reg = pd.DataFrame([
+    {"Model": "Dummy (baseline)", "R2": r2_score(y_test_reg, pred_reg), "MAE": mean_absolute_error(y_test_reg, pred_reg), "RMSE": mean_squared_error(y_test_reg, pred_reg)**0.5},
+    {"Model": "Linear Regression", "R2": r2_score(y_test_reg, pred_reg_lin), "MAE": mean_absolute_error(y_test_reg, pred_reg_lin), "RMSE": mean_squared_error(y_test_reg, pred_reg_lin)**0.5},
+    {"Model": "Decision Tree", "R2": r2_score(y_test_reg, pred_reg_tree_test), "MAE": mean_absolute_error(y_test_reg, pred_reg_tree_test), "RMSE": mean_squared_error(y_test_reg, pred_reg_tree_test)**0.5},
+    {"Model": "XGBoost (tuned)", "R2": r2_score(y_test_reg, pred_reg_xgb_tuned), "MAE": mean_absolute_error(y_test_reg, pred_reg_xgb_tuned), "RMSE": mean_squared_error(y_test_reg, pred_reg_xgb_tuned)**0.5},
+]).round(4)
+
+print("=== Regression Leaderboard ===")
+leaderboard_reg
+```
+
+```{python}
+
+def clf_metrics(name, y_true, y_pred, y_proba):
+    return {
+        "Model": name,
+        "Accuracy": accuracy_score(y_true, y_pred),
+        "Precision": precision_score(y_true, y_pred, zero_division=0),
+        "Recall": recall_score(y_true, y_pred, zero_division=0),
+        "F1": f1_score(y_true, y_pred, zero_division=0),
+        "ROC-AUC": roc_auc_score(y_true, y_proba)
+    }
+    
+```
+
+```{python}
+# Classification Leaderboad table 
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
+
+
+def clf_metrics(name, y_true, y_pred, y_proba):
+    return {
+        "Model": name,
+        "Accuracy": accuracy_score(y_true, y_pred),
+        "Precision": precision_score(y_true, y_pred, zero_division=0),
+        "Recall": recall_score(y_true, y_pred, zero_division=0),
+        "F1": f1_score(y_true, y_pred, zero_division=0),
+        "ROC-AUC": roc_auc_score(y_true, y_proba)
+    }
+leaderboard_clf = pd.DataFrame([
+    clf_metrics("Dummy (baseline)", y_test_clf, pred_clf, clf_baseline.predict_proba(X_test)[:,1]),
+    clf_metrics("Logistic Regression", y_test_clf, pred_clf_log, clf_logistic.predict_proba(X_test)[:,1]),
+    clf_metrics("Decision Tree", y_test_clf, pred_clf_tree_test, clf_tree.predict_proba(X_test)[:,1]),
+    clf_metrics("XGBoost (tuned)", y_test_clf, pred_clf_xgb_tuned, best_clf_xgb.predict_proba(X_test)[:,1]),
+]).round(4)
+
+print("=== Classification Leaderboard ===")
+leaderboard_clf
+```
+
+```{python}
+# Confusion matrix for our best classifier (XGBoost, tuned).
+# Rows = actual class, columns = predicted class. The diagonal cells are
+# correct predictions; the off-diagonal cells show exactly which mistakes
+# the model makes (false positives vs false negatives), which a single
+# accuracy number can't show us.
+from sklearn.metrics import ConfusionMatrixDisplay
+
+fig, ax = plt.subplots(figsize=(6,5))
+ConfusionMatrixDisplay.from_predictions(
+    y_test_clf, pred_clf_xgb_tuned,
+    display_labels=["Not Premium", "Premium"],
+    cmap="Blues", ax=ax
+)
+ax.set_title("Confusion Matrix — XGBoost (tuned)")
+plt.show()
+```
+
+```{python}
+# Predicted vs Actual plot for our best regressor (XGBoost, tuned).
+# Each point is one house: x = its real SalePrice, y = what the model predicted.
+# The red dashed line is "perfect prediction" (predicted = actual exactly).
+# Points clustered tightly around that line = accurate predictions;
+# points far from the line = houses the model got noticeably wrong.
+plt.figure(figsize=(7,7))
+plt.scatter(y_test_reg, pred_reg_xgb_tuned, alpha=0.4)
+lims = [y_test_reg.min(), y_test_reg.max()]
+plt.plot(lims, lims, "r--", label="Perfect prediction")
+plt.xlabel("Actual SalePrice")
+plt.ylabel("Predicted SalePrice")
+plt.title("Predicted vs Actual — XGBoost (tuned)")
+plt.legend()
+plt.show()
+```
+
+```{python}
+# Confirm no missing values remain after the Pipeline's preprocessing step
+import numpy as np
+transformed = preprocessor.fit_transform(X_train)
+print("Any missing values after preprocessing?", np.isnan(transformed.toarray()).any() if hasattr(transformed, "toarray") else np.isnan(transformed).any())
+```
+
+```{python}
+import pickle
+
+# Save the two final, tuned models. Each one's Pipeline already contains
+# the fitted preprocessor as its first step (encoding + scaling + imputation),
+# so loading reg_model.pkl / clf_model.pkl later also restores the
+# preprocessing logic automatically -- no separate preprocessor.pkl needed.
+
+with open("reg_model.pkl", "wb") as f:
+    pickle.dump(best_reg_xgb, f)
+
+with open("clf_model.pkl", "wb") as f:
+    pickle.dump(best_clf_xgb, f)
+
+print("Saved reg_model.pkl and clf_model.pkl")
+```
+
+```{python}
+import pickle
+
+with open("reg_model.pkl", "rb") as f:
+    loaded = pickle.load(f)
+
+print(loaded)  # shows the full Pipeline structure
+print(loaded.named_steps)  # shows both steps: 'preprocessor' and 'model'
+```
+
+

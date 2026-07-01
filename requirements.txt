@@ -1,0 +1,12 @@
+pandas>=2.0
+numpy>=1.26
+matplotlib
+seaborn
+scikit-learn>=1.4
+xgboost>=2.0
+streamlit>=1.30
+joblib
+openpyxl
+jupyter
+folium>=0.14
+streamlit-folium>=0.15
