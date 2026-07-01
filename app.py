@@ -388,10 +388,10 @@ with st.sidebar:
             Dataset at a glance
           </div>
           <div style="font-size:0.85rem; color:{CHARCOAL}; line-height:2.0;">
-            <span style="color:{OLIVE}; font-weight:700; margin-right:0.45rem;">&#8962;</span><strong>2,930</strong> home sales<br>
-            <span style="color:{OLIVE}; font-weight:700; margin-right:0.45rem;">&#9675;</span><strong>2006 – 2010</strong> sale years<br>
-            <span style="color:{OLIVE}; font-weight:700; margin-right:0.45rem;">&#8801;</span><strong>80</strong> features per property<br>
-            <span style="color:{OLIVE}; font-weight:700; margin-right:0.45rem;">&#10022;</span>Source: De Cock (2011), <em>Journal of Statistics Education</em>
+            <span style="color:{OLIVE}; font-weight:800; margin-right:0.45rem;">&#10003;</span><strong>2,930</strong> home sales<br>
+            <span style="color:{OLIVE}; font-weight:800; margin-right:0.45rem;">&#10003;</span><strong>2006 – 2010</strong> sale years<br>
+            <span style="color:{OLIVE}; font-weight:800; margin-right:0.45rem;">&#10003;</span><strong>80</strong> features per property<br>
+            <span style="color:{OLIVE}; font-weight:800; margin-right:0.45rem;">&#10003;</span>Source: De Cock (2011), <em>Journal of Statistics Education</em>
           </div>
         </div>
         """,
@@ -878,7 +878,7 @@ with tab_predict:
         f"Precision Pricing for Ames Homes.<br>Stop Guessing. Start Predicting.</h2>"
         f"<p style='font-size:1.05rem; font-weight:800; color:{OLIVE}; letter-spacing:0.06em; "
         f"text-transform:uppercase; margin:0 0 0.6rem 0;'>"
-        f"Key Factors Influencing Home Prices in Ames:</p>",
+        f"Key Factors Influencing Price &amp; Premium Status:</p>",
         unsafe_allow_html=True,
     )
     _cl_l, _cl_r = st.columns(2, gap="large")
