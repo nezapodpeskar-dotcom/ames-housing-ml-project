@@ -965,36 +965,49 @@ NEIGHBORHOOD_NAMES = {
 _NAME_TO_CODE = {v: k for k, v in NEIGHBORHOOD_NAMES.items()}
 
 with tab_predict:
-    # ── ANALYTICS HEADLINE ──────────────────────────────────────────────────
-    st.markdown(
-        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.22em; "
-        f"color:{OLIVE}; text-transform:uppercase; margin:0 0 0.7rem 0;'>"
-        f"Predictive Analytics</p>"
-        f"<h2 style='font-size:2.0rem; font-weight:800; color:{CHARCOAL}; "
-        f"letter-spacing:-0.025em; line-height:1.25; margin:0 0 0.8rem 0;'>"
-        f"Precision Pricing for Ames Homes.<br>Stop Guessing. Start Predicting.</h2>"
-        f"<p style='font-size:1.05rem; font-weight:800; color:{OLIVE}; letter-spacing:0.06em; "
-        f"text-transform:uppercase; margin:0 0 0.6rem 0;'>"
-        f"Key Factors Influencing Price &amp; Premium Status:</p>",
-        unsafe_allow_html=True,
-    )
-    _cl_l, _cl_r = st.columns(2, gap="large")
-    with _cl_l:
+    # ── HERO: two-column layout ─────────────────────────────────────────────
+    _hero_l, _hero_r = st.columns([11, 9], gap="large")
+
+    with _hero_l:
+        st.markdown(
+            f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.22em; "
+            f"color:{OLIVE}; text-transform:uppercase; margin:0.5rem 0 0.7rem 0;'>"
+            f"Predictive Analytics</p>"
+            f"<h2 style='font-size:2.0rem; font-weight:800; color:{CHARCOAL}; "
+            f"letter-spacing:-0.025em; line-height:1.25; margin:0 0 1.1rem 0;'>"
+            f"Precision Pricing for Ames Homes.<br>Stop Guessing. Start Predicting.</h2>"
+            f"<p style='font-size:1.0rem; font-weight:700; color:{OLIVE}; letter-spacing:0.06em; "
+            f"text-transform:uppercase; margin:0 0 0.7rem 0;'>"
+            f"Key Factors Influencing Price &amp; Premium Status:</p>",
+            unsafe_allow_html=True,
+        )
         st.markdown(
             _checklist_html([
                 "Overall quality rating",
                 "Total living and basement area",
-            ]),
-            unsafe_allow_html=True,
-        )
-    with _cl_r:
-        st.markdown(
-            _checklist_html([
                 "Neighborhood tier",
                 "Year built",
             ]),
             unsafe_allow_html=True,
         )
+
+    with _hero_r:
+        _house_path = "assets/house.png"
+        try:
+            import base64 as _b64
+            _house_b64 = _b64.b64encode(open(_house_path, "rb").read()).decode()
+            st.markdown(
+                f"<div style='display:flex; align-items:center; justify-content:center; "
+                f"height:100%; padding-top:0.5rem;'>"
+                f"<img src='data:image/png;base64,{_house_b64}' "
+                f"style='width:100%; max-width:420px; border-radius:14px; "
+                f"opacity:0.93; display:block; margin:auto;' />"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+        except FileNotFoundError:
+            pass
+
     st.markdown(
         f"<hr style='border-color:{SAGE}; opacity:0.35; margin:1.8rem 0 2rem 0;'>",
         unsafe_allow_html=True,
