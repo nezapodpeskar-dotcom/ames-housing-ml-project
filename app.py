@@ -1431,29 +1431,39 @@ with tab_eda:
     cmap = mcolors.LinearSegmentedColormap.from_list("oa", [SAGE, OLIVE])
 
     # ── Layout helpers ────────────────────────────────────────────────────────
-    def _section_header(number, label, headline, intro):
+    def _section_left(num, label, headline, body, kpi_label, kpi_value, kpi_sub):
         st.markdown(
-            f"<div style='margin:2.8rem 0 1.3rem 0;'>"
-            f"<p style='font-size:0.68rem; font-weight:700; letter-spacing:0.2em; "
-            f"color:{OLIVE}; text-transform:uppercase; margin:0 0 0.45rem 0;'>"
-            f"{number} &mdash; {label}</p>"
-            f"<h3 style='font-size:1.35rem; font-weight:800; color:{CHARCOAL}; "
-            f"letter-spacing:-0.02em; line-height:1.3; margin:0 0 0.55rem 0;'>"
-            f"{headline}</h3>"
-            f"<p style='font-size:0.9rem; color:{SAGE}; line-height:1.8; margin:0;'>"
-            f"{intro}</p>"
-            f"</div>",
+            f"<div style='padding-top:0.3rem;'>"
+            f"<div style='display:flex; align-items:center; gap:0.55rem; margin-bottom:0.65rem;'>"
+            f"<span style='background:{OLIVE}; color:{WHITE}; font-size:0.62rem; "
+            f"font-weight:800; letter-spacing:0.08em; border-radius:4px; "
+            f"padding:0.18rem 0.55rem;'>{num}</span>"
+            f"<span style='font-size:0.62rem; font-weight:700; letter-spacing:0.18em; "
+            f"color:{SAGE}; text-transform:uppercase;'>{label}</span>"
+            f"</div>"
+            f"<h3 style='font-size:1.25rem; font-weight:800; color:{CHARCOAL}; "
+            f"letter-spacing:-0.02em; line-height:1.3; margin:0 0 0.65rem 0;'>{headline}</h3>"
+            f"<p style='font-size:0.88rem; color:{SAGE}; line-height:1.8; margin:0 0 1.1rem 0;'>{body}</p>"
+            f"<div style='background:{CREAM}; border:1px solid #DDD9D0; border-radius:10px; "
+            f"padding:1.1rem 1.3rem;'>"
+            f"<p style='font-size:0.62rem; font-weight:700; letter-spacing:0.15em; "
+            f"color:{SAGE}; text-transform:uppercase; margin:0 0 0.25rem 0;'>{kpi_label}</p>"
+            f"<p style='font-size:2.2rem; font-weight:800; color:{OLIVE}; "
+            f"letter-spacing:-0.03em; line-height:1.0; margin:0 0 0.3rem 0;'>{kpi_value}</p>"
+            f"<p style='font-size:0.8rem; color:{CHARCOAL}; line-height:1.5; margin:0;'>{kpi_sub}</p>"
+            f"</div></div>",
             unsafe_allow_html=True,
         )
 
-    def _takeaway(text):
+    def _key_insight(text):
         st.markdown(
-            f"<div style='background:{CREAM}; border:1px solid #DDD9D0; "
+            f"<div style='background:{WHITE}; border:1px solid #DDD9D0; "
             f"border-left:4px solid {OLIVE}; border-radius:0 8px 8px 0; "
-            f"padding:0.85rem 1.2rem; margin-top:0.9rem;'>"
-            f"<p style='font-size:0.65rem; font-weight:700; letter-spacing:0.16em; "
-            f"color:{SAGE}; text-transform:uppercase; margin:0 0 0.3rem 0;'>Key Insight</p>"
-            f"<p style='font-size:0.88rem; color:{CHARCOAL}; line-height:1.75; margin:0;'>"
+            f"padding:0.9rem 1.3rem; margin-top:1.3rem;'>"
+            f"<p style='font-size:0.62rem; font-weight:700; letter-spacing:0.16em; "
+            f"color:{SAGE}; text-transform:uppercase; margin:0 0 0.3rem 0;'>"
+            f"&#10022;&nbsp; Key Insight</p>"
+            f"<p style='font-size:0.9rem; color:{CHARCOAL}; line-height:1.75; margin:0;'>"
             f"{text}</p></div>",
             unsafe_allow_html=True,
         )
@@ -1461,7 +1471,7 @@ with tab_eda:
     def _section_divider():
         st.markdown(
             f"<hr style='border:none; border-top:1px solid {SAGE}; "
-            f"opacity:0.2; margin:2.8rem 0 0 0;'>",
+            f"opacity:0.2; margin:2.5rem 0;'>",
             unsafe_allow_html=True,
         )
 
@@ -1480,40 +1490,45 @@ with tab_eda:
         unsafe_allow_html=True,
     )
     st.markdown(
-        f"<hr style='border:none; border-top:2px solid {SAGE}; opacity:0.3; margin:1.5rem 0 0 0;'>",
+        f"<hr style='border:none; border-top:2px solid {SAGE}; opacity:0.3; margin:1.5rem 0;'>",
         unsafe_allow_html=True,
     )
 
     # ── Section 01: Price Distribution ───────────────────────────────────────
-    _section_header(
-        "01", "PRICE DISTRIBUTION",
-        "How are Ames home prices distributed?",
-        "The Ames market covers an unusually wide range — from modest starter "
-        "homes under $40k to luxury estates above $600k. Understanding where "
-        "most transactions cluster helps calibrate any price estimate.",
-    )
+    _s01_l, _s01_r = st.columns([1, 1.5], gap="large")
+    with _s01_l:
+        _section_left(
+            "01", "PRICE DISTRIBUTION",
+            "How are Ames home prices distributed?",
+            "The Ames market spans an unusually wide range — from modest starter "
+            "homes under $40k to luxury estates above $600k. Most transactions "
+            "cluster around the median, but a long right tail pulls the average "
+            "well above what a typical buyer will pay.",
+            "Median Sale Price", f"${median_price:,.0f}",
+            f"well below the mean of ${mean_price:,.0f}",
+        )
+    with _s01_r:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        n, bins, patches = ax.hist(_price_hist, bins=50, edgecolor="none")
+        norm = mcolors.Normalize(vmin=bins[0], vmax=bins[-1])
+        for patch, left in zip(patches, bins[:-1]):
+            patch.set_facecolor(cmap(norm(left)))
+            patch.set_alpha(0.88)
+        ax.axvline(median_price / 1_000, color=CHARCOAL, linewidth=1.6,
+                   linestyle="--", zorder=5)
+        ax.text(median_price / 1_000 + 3, ax.get_ylim()[1] * 0.88,
+                f"Median  ${median_price/1000:.0f}k",
+                color=CHARCOAL, fontsize=9, fontweight="600")
+        ax.set_xlabel("Sale Price ($k)", labelpad=6, fontsize=10)
+        ax.set_ylabel("Number of Homes", labelpad=6, fontsize=10)
+        ax.set_title("Sale Price Distribution", pad=10, fontsize=11)
+        ax.tick_params(labelsize=9)
+        style_ax(fig, ax)
+        plt.tight_layout()
+        st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(14, 6))
-    n, bins, patches = ax.hist(_price_hist, bins=50, edgecolor="none")
-    norm = mcolors.Normalize(vmin=bins[0], vmax=bins[-1])
-    for patch, left in zip(patches, bins[:-1]):
-        patch.set_facecolor(cmap(norm(left)))
-        patch.set_alpha(0.88)
-    ax.axvline(median_price / 1_000, color=CHARCOAL, linewidth=1.8,
-               linestyle="--", zorder=5)
-    ax.text(median_price / 1_000 + 3, ax.get_ylim()[1] * 0.88,
-            f"Median  ${median_price/1000:.0f}k",
-            color=CHARCOAL, fontsize=11, fontweight="600")
-    ax.set_xlabel("Sale Price ($k)", labelpad=8, fontsize=12)
-    ax.set_ylabel("Number of Homes", labelpad=8, fontsize=12)
-    ax.set_title("Sale Price Distribution", pad=12, fontsize=14)
-    ax.tick_params(labelsize=11)
-    style_ax(fig, ax)
-    plt.tight_layout()
-    st.pyplot(fig, use_container_width=True)
-    plt.close(fig)
-
-    _takeaway(
+    _key_insight(
         f"The median Ames home sold for <strong>${median_price:,.0f}</strong> — "
         f"well below the mean of <strong>${mean_price:,.0f}</strong>, pulled up by "
         f"a long tail of luxury sales. "
@@ -1523,40 +1538,45 @@ with tab_eda:
     _section_divider()
 
     # ── Section 02: Neighborhood Performance ─────────────────────────────────
-    _section_header(
-        "02", "NEIGHBORHOOD PERFORMANCE",
-        "Which neighbourhoods command the highest prices?",
-        "Location is one of the most powerful — and hardest to change — "
-        "factors in property pricing. Ames has 24 distinct neighbourhoods "
-        "spanning three market tiers, with median prices varying by more "
-        f"than {price_ratio:.1f}× from top to bottom.",
-    )
-
     nbhd_sorted = nbhd_med.sort_values(ascending=True)
     norm2 = mcolors.Normalize(vmin=nbhd_sorted.min(), vmax=nbhd_sorted.max())
     bar_colors2 = [cmap(norm2(v)) for v in nbhd_sorted.values]
 
-    fig, ax = plt.subplots(figsize=(14, 8))
-    bars = ax.barh(nbhd_sorted.index, nbhd_sorted.values / 1_000,
-                   color=bar_colors2, edgecolor="none", height=0.65)
-    for bar, val in zip(bars, nbhd_sorted.values):
-        ax.text(bar.get_width() + 1.5,
-                bar.get_y() + bar.get_height() / 2,
-                f"${val/1000:.0f}k",
-                va="center", fontsize=9, color=CHARCOAL)
-    ax.set_xlabel("Median Sale Price ($k)", labelpad=8, fontsize=12)
-    ax.set_title("Median Sale Price by Neighbourhood", pad=12, fontsize=14)
-    ax.tick_params(labelsize=11)
-    ax.xaxis.set_major_formatter(mticker.FormatStrFormatter("$%dk"))
-    ax.set_xlim(right=nbhd_sorted.max() / 1_000 * 1.18)
-    style_ax(fig, ax)
-    ax.grid(axis="x", color="#DDD9D0", linewidth=0.7)
-    ax.grid(axis="y", visible=False)
-    plt.tight_layout()
-    st.pyplot(fig, use_container_width=True)
-    plt.close(fig)
+    _s02_l, _s02_r = st.columns([1, 1.5], gap="large")
+    with _s02_l:
+        _section_left(
+            "02", "NEIGHBORHOOD PERFORMANCE",
+            "Which neighbourhoods command the highest prices?",
+            "Location is the one factor buyers cannot change after purchase. "
+            "Ames has 24 distinct neighbourhoods spanning three market tiers — "
+            "Premium, Mid-Range, and Budget — and median prices vary dramatically "
+            "from one end of the city to the other.",
+            "Market Price Range", f"{price_ratio:.1f}×",
+            f"{richest_nbhd} ${nbhd_med[richest_nbhd]/1000:.0f}k "
+            f"vs {cheapest_nbhd} ${nbhd_med[cheapest_nbhd]/1000:.0f}k",
+        )
+    with _s02_r:
+        fig, ax = plt.subplots(figsize=(8, 8))
+        bars = ax.barh(nbhd_sorted.index, nbhd_sorted.values / 1_000,
+                       color=bar_colors2, edgecolor="none", height=0.65)
+        for bar, val in zip(bars, nbhd_sorted.values):
+            ax.text(bar.get_width() + 1.2,
+                    bar.get_y() + bar.get_height() / 2,
+                    f"${val/1000:.0f}k",
+                    va="center", fontsize=8, color=CHARCOAL)
+        ax.set_xlabel("Median Sale Price ($k)", labelpad=6, fontsize=10)
+        ax.set_title("Median Sale Price by Neighbourhood", pad=10, fontsize=11)
+        ax.tick_params(labelsize=8)
+        ax.xaxis.set_major_formatter(mticker.FormatStrFormatter("$%dk"))
+        ax.set_xlim(right=nbhd_sorted.max() / 1_000 * 1.18)
+        style_ax(fig, ax)
+        ax.grid(axis="x", color="#DDD9D0", linewidth=0.7)
+        ax.grid(axis="y", visible=False)
+        plt.tight_layout()
+        st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
 
-    _takeaway(
+    _key_insight(
         f"<strong>{richest_nbhd}</strong> commands the highest median price at "
         f"<strong>${nbhd_med[richest_nbhd]:,.0f}</strong> — "
         f"<strong>{price_ratio:.1f}&times;</strong> more than the most affordable "
@@ -1567,39 +1587,44 @@ with tab_eda:
     _section_divider()
 
     # ── Section 03: Build Quality Impact ─────────────────────────────────────
-    _section_header(
-        "03", "BUILD QUALITY IMPACT",
-        "How much does build quality matter?",
-        "The dataset rates each home on an overall quality scale from 1 to 10. "
-        "This single appraisal score consistently proves to be one of the "
-        "most influential drivers of final sale price across the entire market.",
-    )
-
     qual_vals   = qual_med.index.astype(int)
     qual_prices = qual_med.values / 1_000
     norm3 = mcolors.Normalize(vmin=qual_prices.min(), vmax=qual_prices.max())
     bar_colors3 = [cmap(norm3(v)) for v in qual_prices]
 
-    fig, ax = plt.subplots(figsize=(14, 6))
-    bars3 = ax.bar(qual_vals, qual_prices, color=bar_colors3,
-                   edgecolor="none", width=0.65, zorder=3)
-    for bar, val in zip(bars3, qual_prices):
-        ax.text(bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + 2,
-                f"${val:.0f}k",
-                ha="center", va="bottom", fontsize=10, color=CHARCOAL)
-    ax.set_xlabel("Overall Quality Rating (1–10)", labelpad=8, fontsize=12)
-    ax.set_ylabel("Median Sale Price ($k)", labelpad=8, fontsize=12)
-    ax.set_title("Median Sale Price by Overall Quality", pad=12, fontsize=14)
-    ax.tick_params(labelsize=11)
-    ax.set_xticks(qual_vals)
-    ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("$%dk"))
-    style_ax(fig, ax)
-    plt.tight_layout()
-    st.pyplot(fig, use_container_width=True)
-    plt.close(fig)
+    _s03_l, _s03_r = st.columns([1, 1.5], gap="large")
+    with _s03_l:
+        _section_left(
+            "03", "BUILD QUALITY IMPACT",
+            "How much does build quality matter?",
+            "Every home in the dataset carries an overall quality rating from 1 "
+            "to 10. This single number — which summarises construction materials, "
+            "finish level, and craftsmanship — turns out to be one of the most "
+            "decisive factors in determining final sale price.",
+            "Quality Premium", f"+{price_jump * 100:.0f}%",
+            "price increase moving from rating 6 to 8",
+        )
+    with _s03_r:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        bars3 = ax.bar(qual_vals, qual_prices, color=bar_colors3,
+                       edgecolor="none", width=0.65, zorder=3)
+        for bar, val in zip(bars3, qual_prices):
+            ax.text(bar.get_x() + bar.get_width() / 2,
+                    bar.get_height() + 2,
+                    f"${val:.0f}k",
+                    ha="center", va="bottom", fontsize=8, color=CHARCOAL)
+        ax.set_xlabel("Overall Quality Rating (1–10)", labelpad=6, fontsize=10)
+        ax.set_ylabel("Median Sale Price ($k)", labelpad=6, fontsize=10)
+        ax.set_title("Median Sale Price by Overall Quality", pad=10, fontsize=11)
+        ax.tick_params(labelsize=9)
+        ax.set_xticks(qual_vals)
+        ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("$%dk"))
+        style_ax(fig, ax)
+        plt.tight_layout()
+        st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
 
-    _takeaway(
+    _key_insight(
         f"Moving from quality rating 6 to 8 adds roughly "
         f"<strong>{price_jump * 100:.0f}%</strong> to the median price — "
         f"a gap that can exceed $60,000 on a single transaction. "
@@ -1609,42 +1634,46 @@ with tab_eda:
     _section_divider()
 
     # ── Section 04: Space vs Price ────────────────────────────────────────────
-    _section_header(
-        "04", "SPACE VS PRICE",
-        "Does more space mean more money?",
-        "Above-ground living area is among the most intuitive price signals. "
-        "But the relationship is not purely linear — quality amplifies the "
-        "effect of size, meaning a larger home of poor quality can still "
-        "underperform a smaller but impeccably finished property.",
-    )
+    _s04_l, _s04_r = st.columns([1, 1.5], gap="large")
+    with _s04_l:
+        _section_left(
+            "04", "SPACE VS PRICE",
+            "Does more space mean more money?",
+            "Above-ground living area is the most intuitive price signal — "
+            "more rooms, more value. But size alone does not tell the full story. "
+            "Two homes with identical square footage can differ by tens of thousands "
+            "of dollars depending on build quality and location.",
+            "Area–Price Correlation", f"r = {area_corr:.2f}",
+            "Pearson r between living area and sale price",
+        )
+    with _s04_r:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        sc = ax.scatter(
+            _area_syn, _price_syn,
+            c=_qual_syn,
+            cmap=mcolors.LinearSegmentedColormap.from_list("oa2", [SAGE, OLIVE]),
+            alpha=0.45, s=10, linewidths=0, zorder=3,
+        )
+        m, b = np.polyfit(_area_syn, _price_syn, 1)
+        x_line = np.linspace(_area_syn.min(), _area_syn.max(), 200)
+        ax.plot(x_line, m * x_line + b, color=CHARCOAL, linewidth=1.8,
+                linestyle="--", zorder=5, label=f"Trend  (r = {area_corr:.2f})")
+        ax.legend(fontsize=9, frameon=False, loc="upper left")
+        cbar = plt.colorbar(sc, ax=ax, pad=0.01)
+        cbar.set_label("Overall Quality", fontsize=9, color=CHARCOAL)
+        cbar.ax.tick_params(labelsize=8, colors=CHARCOAL)
+        cbar.outline.set_edgecolor(SAGE)
+        ax.set_xlabel("Above-Ground Living Area (sq ft)", labelpad=6, fontsize=10)
+        ax.set_ylabel("Sale Price ($k)", labelpad=6, fontsize=10)
+        ax.set_title("Living Area vs Sale Price, coloured by Quality", pad=10, fontsize=11)
+        ax.tick_params(labelsize=9)
+        ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("$%dk"))
+        style_ax(fig, ax)
+        plt.tight_layout()
+        st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(14, 6))
-    sc = ax.scatter(
-        _area_syn, _price_syn,
-        c=_qual_syn,
-        cmap=mcolors.LinearSegmentedColormap.from_list("oa2", [SAGE, OLIVE]),
-        alpha=0.45, s=14, linewidths=0, zorder=3,
-    )
-    m, b = np.polyfit(_area_syn, _price_syn, 1)
-    x_line = np.linspace(_area_syn.min(), _area_syn.max(), 200)
-    ax.plot(x_line, m * x_line + b, color=CHARCOAL, linewidth=2,
-            linestyle="--", zorder=5, label=f"Trend  (r = {area_corr:.2f})")
-    ax.legend(fontsize=11, frameon=False, loc="upper left")
-    cbar = plt.colorbar(sc, ax=ax, pad=0.01)
-    cbar.set_label("Overall Quality", fontsize=11, color=CHARCOAL)
-    cbar.ax.tick_params(labelsize=10, colors=CHARCOAL)
-    cbar.outline.set_edgecolor(SAGE)
-    ax.set_xlabel("Above-Ground Living Area (sq ft)", labelpad=8, fontsize=12)
-    ax.set_ylabel("Sale Price ($k)", labelpad=8, fontsize=12)
-    ax.set_title("Living Area vs Sale Price, coloured by Quality", pad=12, fontsize=14)
-    ax.tick_params(labelsize=11)
-    ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("$%dk"))
-    style_ax(fig, ax)
-    plt.tight_layout()
-    st.pyplot(fig, use_container_width=True)
-    plt.close(fig)
-
-    _takeaway(
+    _key_insight(
         f"Living area correlates with price at <strong>r = {area_corr:.2f}</strong>, "
         f"but the colour overlay shows that two homes with identical square footage "
         f"can differ by tens of thousands of dollars based on build quality alone. "
@@ -1654,17 +1683,7 @@ with tab_eda:
     _section_divider()
 
     # ── Section 05: Premium Home Signals ─────────────────────────────────────
-    _section_header(
-        "05", "PREMIUM HOME SIGNALS",
-        "What separates premium homes from the rest of the market?",
-        "The premium classifier identifies homes in the top 25% by sale price "
-        f"— those above <strong>${_Q75_PRICE:,.0f}</strong>. "
-        "Understanding which features drive that classification reveals what "
-        "truly defines high-value real estate in Ames.",
-    )
-
     import re
-
     feat_names = clf_model[:-1].get_feature_names_out()
     importances = clf_model[-1].feature_importances_
 
@@ -1682,7 +1701,6 @@ with tab_eda:
         .sort_values(ascending=False)
         .head(10)
     )
-
     label_map = {
         "Qual_x": "Quality × Area Score",
         "Kitchen Qual": "Kitchen Quality",
@@ -1702,34 +1720,47 @@ with tab_eda:
     }
     grouped_imp.index = [label_map.get(i, i) for i in grouped_imp.index]
     grouped_imp = grouped_imp.sort_values(ascending=True)
-
     norm5 = mcolors.Normalize(vmin=grouped_imp.min(), vmax=grouped_imp.max())
     bar_colors5 = [cmap(norm5(v)) for v in grouped_imp.values]
 
-    fig, ax = plt.subplots(figsize=(14, 6))
-    bars5 = ax.barh(grouped_imp.index, grouped_imp.values * 100,
-                    color=bar_colors5, edgecolor="none", height=0.62)
-    for bar, val in zip(bars5, grouped_imp.values):
-        ax.text(bar.get_width() + 0.15,
-                bar.get_y() + bar.get_height() / 2,
-                f"{val*100:.1f}%",
-                va="center", fontsize=10, color=CHARCOAL)
-    ax.set_xlabel("Feature Importance (%)", labelpad=8, fontsize=12)
-    ax.set_title("Top 10 Drivers of Premium Classification", pad=12, fontsize=14)
-    ax.tick_params(labelsize=11)
-    ax.set_xlim(right=grouped_imp.max() * 100 * 1.22)
-    ax.xaxis.set_major_formatter(mticker.FormatStrFormatter("%.0f%%"))
-    style_ax(fig, ax)
-    ax.grid(axis="x", color="#DDD9D0", linewidth=0.7)
-    ax.grid(axis="y", visible=False)
-    plt.tight_layout()
-    st.pyplot(fig, use_container_width=True)
-    plt.close(fig)
+    _s05_l, _s05_r = st.columns([1, 1.5], gap="large")
+    with _s05_l:
+        _section_left(
+            "05", "PREMIUM HOME SIGNALS",
+            "What separates premium homes from the rest of the market?",
+            "The premium classifier draws a line at the top 25% of sale prices. "
+            f"Homes above ${_Q75_PRICE:,.0f} earn the Premium label. "
+            "The model's feature importances reveal which property attributes "
+            "most reliably predict that a home will cross that threshold.",
+            "Premium Threshold", f"${_Q75_PRICE:,.0f}",
+            "top 25% of all Ames home sales",
+        )
+    with _s05_r:
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+        bars5 = ax.barh(grouped_imp.index, grouped_imp.values * 100,
+                        color=bar_colors5, edgecolor="none", height=0.62)
+        for bar, val in zip(bars5, grouped_imp.values):
+            ax.text(bar.get_width() + 0.15,
+                    bar.get_y() + bar.get_height() / 2,
+                    f"{val*100:.1f}%",
+                    va="center", fontsize=8, color=CHARCOAL)
+        ax.set_xlabel("Feature Importance (%)", labelpad=6, fontsize=10)
+        ax.set_title("Top 10 Drivers of Premium Classification", pad=10, fontsize=11)
+        ax.tick_params(labelsize=8)
+        ax.set_xlim(right=grouped_imp.max() * 100 * 1.22)
+        ax.xaxis.set_major_formatter(mticker.FormatStrFormatter("%.0f%%"))
+        style_ax(fig, ax)
+        ax.grid(axis="x", color="#DDD9D0", linewidth=0.7)
+        ax.grid(axis="y", visible=False)
+        plt.tight_layout()
+        st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
 
     top1 = grouped_imp.index[-1]
     top1_pct = grouped_imp.values[-1] * 100
     top3_pct = grouped_imp.values[-3:].sum() * 100
-    _takeaway(
+    _key_insight(
         f"<strong>{top1}</strong> alone accounts for "
         f"<strong>{top1_pct:.0f}%</strong> of the classifier's decision weight — "
         f"it multiplies appraiser quality by total square footage, capturing both "
