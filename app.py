@@ -1222,25 +1222,48 @@ with tab_predict:
                 )
 
         # ── How Investment Potential is calculated (unified card) ────────────
-        if _inv_level == "HIGH":
+        _is_premium = (premium_label == 1)
+
+        if _inv_level == "HIGH" and _is_premium:
             _reasoning_bullets = [
-                "strong neighborhood demand",
-                "premium-market positioning",
-                "above-average quality and size",
-                "strong resale potential",
+                "confirmed premium-market classification",
+                "strong neighborhood demand and location tier",
+                "above-average quality and living area",
+                "strong resale potential and high-value property profile",
             ]
-        elif _inv_level == "MEDIUM":
+        elif _inv_level == "HIGH" and not _is_premium:
+            _reasoning_bullets = [
+                "strong neighborhood and market positioning",
+                "above-average quality score and living area",
+                "price well above the Ames market average",
+                "solid resale indicators across multiple factors",
+            ]
+        elif _inv_level == "MEDIUM" and _is_premium:
+            _reasoning_bullets = [
+                "premium-market positioning with moderate investment balance",
+                "strong pricing level but mixed long-term indicators",
+                "above-average home characteristics confirmed by classifier",
+                "moderate resale stability relative to top-tier investment properties",
+            ]
+        elif _inv_level == "MEDIUM" and not _is_premium:
             _reasoning_bullets = [
                 "balanced neighborhood positioning",
                 "moderate resale strength",
-                "average market pricing",
-                "solid but not premium market characteristics",
+                "average market pricing relative to Ames",
+                "solid property profile without premium-tier signals",
             ]
-        else:
+        elif _inv_level == "LOW" and _is_premium:
             _reasoning_bullets = [
-                "below-average pricing position",
-                "weaker resale indicators",
-                "limited premium-market signals",
+                "premium-home characteristics present despite lower score",
+                "neighborhood or price factors temper overall investment rating",
+                "above-average home quality with limited market upside",
+                "investment signal mixed — premium quality, weaker market conditions",
+            ]
+        else:  # LOW, not premium
+            _reasoning_bullets = [
+                "below-average price positioning relative to Ames market",
+                "weaker resale indicators across location and quality",
+                "limited investment signals at current market levels",
             ]
 
         _reason_bullet_html = "".join(
