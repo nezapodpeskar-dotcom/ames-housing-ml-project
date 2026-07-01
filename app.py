@@ -372,23 +372,6 @@ with st.sidebar:
 
     st.markdown(
         f"""
-        <div style="font-size:0.88rem; color:{CHARCOAL}; line-height:1.7;">
-        <strong style="font-size:0.9rem;">About this app</strong><br><br>
-        This tool uses two machine-learning models trained on 2,930 Ames, Iowa
-        home sales (2006–2010). Enter a few key property details to receive an
-        <em>estimated sale price</em> and a <em>premium-home classification</em>
-        — whether the property would rank in the top 25% of the market.<br><br>
-        All remaining features are held at training-set medians, so you only
-        need to fill in what you know.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.divider()
-
-    st.markdown(
-        f"""
         <div style="background:{WHITE}; border:1px solid #DDD9D0;
                     border-left:4px solid {OLIVE}; border-radius:0 10px 10px 0;
                     padding:1.0rem 1.1rem;">
