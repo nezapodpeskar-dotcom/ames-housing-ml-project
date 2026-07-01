@@ -1,0 +1,1489 @@
+"""
+Ames Housing Price Predictor
+Business-dashboard UI — Inter typeface, olive/sage/cream palette.
+"""
+
+import pickle
+import pandas as pd
+import numpy as np
+import streamlit as st
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import matplotlib.colors as mcolors
+import seaborn as sns
+
+import folium
+from streamlit_folium import st_folium
+
+# ── Palette ─────────────────────────────────────────────────────────────────
+OLIVE    = "#5B6B3A"
+SAGE     = "#A8AE93"
+CREAM    = "#F7F5EF"
+CHARCOAL = "#2B2B28"
+WHITE    = "#FFFFFF"
+
+# ── Neighbourhood reference data (hardcoded — no runtime fetch) ──────────────
+# Sources: training-data medians + Wikipedia (Ames, Iowa article, 2024).
+# Wikipedia contained no neighbourhood-level descriptions beyond a brief
+# mention of the Old Town Historic District; all other sentences are grounded
+# in the training-set statistics provided below.
+#
+# Schema per entry:
+#   code -> (full_name, description, tier, median_k)
+#   tier: "Premium" | "Mid-Range" | "Budget"
+
+NEIGHBORHOOD_INFO = {
+    "NridgHt": (
+        "Northridge Heights",
+        "Ames' newest large-scale development, featuring the biggest lots and the highest concentration of post-2000 construction in the dataset.",
+        "Premium",
+        315,
+    ),
+    "StoneBr": (
+        "Stone Brook",
+        "The city's luxury tier — a small, upscale enclave that commands the highest median prices of any neighbourhood in Ames.",
+        "Premium",
+        310,
+    ),
+    "NoRidge": (
+        "Northridge",
+        "Established upscale suburb with spacious homes, mature landscaping, and consistently strong resale values.",
+        "Premium",
+        302,
+    ),
+    "Somerst": (
+        "Somerset",
+        "A modern planned community built largely in the 2000s, valued for uniform quality and well-maintained common areas.",
+        "Premium",
+        253,
+    ),
+    "Veenker": (
+        "Veenker",
+        "A small, quiet neighbourhood bordering the Veenker Memorial Golf Course, with limited inventory and above-average prices.",
+        "Premium",
+        245,
+    ),
+    "CollgCr": (
+        "College Creek",
+        "One of the most popular choices for Iowa State professionals and faculty, with well-kept homes and easy campus access.",
+        "Mid-Range",
+        213,
+    ),
+    "Crawfor": (
+        "Crawford",
+        "Older neighbourhood with character homes and established streetscapes, popular for its architectural variety.",
+        "Mid-Range",
+        197,
+    ),
+    "Gilbert": (
+        "Gilbert",
+        "Quiet suburban neighbourhood in northeast Ames, favoured by families for its calm streets and solid school district.",
+        "Mid-Range",
+        196,
+    ),
+    "Timber": (
+        "Timberland",
+        "Wooded lots and spacious yards on the city's outer fringe, appealing to buyers who prioritise privacy and green space.",
+        "Mid-Range",
+        192,
+    ),
+    "Blmngtn": (
+        "Bloomington Heights",
+        "Self-contained residential pocket with steady values and a quiet, low-traffic character.",
+        "Mid-Range",
+        191,
+    ),
+    "ClearCr": (
+        "Clear Creek",
+        "Neighbourhood bordering the Clear Creek corridor, offering a green setting and mid-range pricing.",
+        "Mid-Range",
+        189,
+    ),
+    "SawyerW": (
+        "Sawyer West",
+        "Newer residential development on Ames' west side with modern floor plans and consistent build quality.",
+        "Mid-Range",
+        183,
+    ),
+    "Mitchel": (
+        "Mitchell",
+        "Solid south Ames suburb with conventional single-family homes and straightforward suburban amenities.",
+        "Mid-Range",
+        156,
+    ),
+    "SWISU": (
+        "Southwest Iowa State",
+        "Located on the south edge of the Iowa State campus, convenient for university staff and graduate students.",
+        "Budget",
+        142,
+    ),
+    "NPkVill": (
+        "Northwest Park Village",
+        "Small northwest cluster with limited sales activity and compact, modestly priced homes.",
+        "Budget",
+        141,
+    ),
+    "Blueste": (
+        "Bluestem",
+        "Very small neighbourhood with few recorded sales, reflecting a niche pocket of modest Ames housing.",
+        "Budget",
+        137,
+    ),
+    "Sawyer": (
+        "Sawyer",
+        "Modest starter-home neighbourhood offering some of the most accessible entry-level pricing in the city.",
+        "Budget",
+        136,
+    ),
+    "NAmes": (
+        "North Ames",
+        "The largest single neighbourhood in the dataset, representing the broad working-class residential fabric of the city.",
+        "Budget",
+        145,
+    ),
+    "Edwards": (
+        "Edwards",
+        "Affordable west-of-centre neighbourhood popular with first-time buyers and those seeking value close to amenities.",
+        "Budget",
+        131,
+    ),
+    "OldTown": (
+        "Old Town",
+        "Ames' historic district closest to downtown — the Old Town Historic District features older homes with period character and walkable streets.",
+        "Budget",
+        123,
+    ),
+    "BrkSide": (
+        "Brookside",
+        "Older housing stock near the railroad corridor and Brookside Park, offering some of the most affordable detached homes in the city.",
+        "Budget",
+        125,
+    ),
+    "BrDale": (
+        "Briardale",
+        "Basic housing stock with compact lots, representing a straightforward and no-frills residential pocket.",
+        "Budget",
+        106,
+    ),
+    "IDOTRR": (
+        "IDOTRR",
+        "Industrial-adjacent area near the Iowa Department of Transportation right-of-way, with the lowest median prices in the dataset.",
+        "Budget",
+        98,
+    ),
+    "MeadowV": (
+        "Meadow Village",
+        "The smallest homes and the lowest median price in the entire dataset — a compact, entry-level pocket of Ames.",
+        "Budget",
+        88,
+    ),
+}
+
+# ── Page config ──────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="Ames Housing Predictor",
+    page_icon="assets/logo.png",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# ── CSS + Google Fonts (Inter) ───────────────────────────────────────────────
+st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Typography ── */
+html, body, .stApp, .stApp * {{
+    font-family: 'Inter', sans-serif !important;
+}}
+
+/* ── Background ── */
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+.main {{
+    background-color: {CREAM};
+}}
+
+/* ── Sidebar ── */
+[data-testid="stSidebar"],
+[data-testid="stSidebarContent"] {{
+    background-color: #EDEAE2;
+    border-right: 1px solid {SAGE};
+}}
+
+/* ── Tab bar ── */
+.stTabs [data-baseweb="tab-list"] {{
+    gap: 0;
+    border-bottom: 2px solid {SAGE} !important;
+    background: transparent;
+}}
+.stTabs [data-baseweb="tab"] {{
+    background: transparent;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    color: {CHARCOAL};
+    font-size: 0.92rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 10px 28px;
+    margin-bottom: -2px;
+    border-radius: 0;
+}}
+.stTabs [data-baseweb="tab"][aria-selected="true"] {{
+    border-bottom: 3px solid {OLIVE} !important;
+    color: {OLIVE} !important;
+    font-weight: 700;
+}}
+.stTabs [data-baseweb="tab"]:hover {{
+    color: {OLIVE};
+}}
+
+/* ── Predict button ── */
+.stFormSubmitButton > button {{
+    background-color: {OLIVE} !important;
+    color: white !important;
+    border: 2px solid {OLIVE} !important;
+    border-radius: 6px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.92rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.04em !important;
+    padding: 0.6rem 1.5rem !important;
+    width: 100% !important;
+    transition: all 0.18s ease;
+}}
+.stFormSubmitButton > button:hover {{
+    background-color: transparent !important;
+    color: {OLIVE} !important;
+}}
+
+/* ── Sliders ── */
+[data-testid="stSlider"] [role="slider"] {{
+    background-color: {OLIVE} !important;
+    border-color: {OLIVE} !important;
+}}
+[data-testid="stSlider"] > div > div > div > div {{
+    background-color: {OLIVE} !important;
+}}
+
+/* ── Widget labels ── */
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] label {{
+    color: {CHARCOAL} !important;
+    font-size: 0.92rem !important;
+    font-weight: 500 !important;
+}}
+
+/* ── Selectbox text ── */
+[data-testid="stSelectbox"] div[data-baseweb="select"] span {{
+    font-size: 0.92rem !important;
+    color: {CHARCOAL} !important;
+}}
+
+/* ── Divider ── */
+hr {{
+    border-color: {SAGE} !important;
+    opacity: 0.45;
+}}
+
+/* ── Fun-fact callout ── */
+.fun-fact {{
+    background: white;
+    border-left: 4px solid {OLIVE};
+    border-radius: 0 8px 8px 0;
+    padding: 0.85rem 1.1rem;
+    margin-top: 0.6rem;
+    font-size: 0.88rem;
+    color: {CHARCOAL};
+    line-height: 1.6;
+}}
+.fun-fact strong {{
+    color: {OLIVE};
+    font-weight: 700;
+}}
+</style>
+""", unsafe_allow_html=True)
+
+# ── Load pickles once per server lifetime ────────────────────────────────────
+@st.cache_resource
+def load_models():
+    with open("models/reg_model.pkl", "rb") as f:
+        reg = pickle.load(f)
+    with open("models/clf_model.pkl", "rb") as f:
+        clf = pickle.load(f)
+    with open("models/defaults.pkl", "rb") as f:
+        defaults = pickle.load(f)
+    return reg, clf, defaults
+
+reg_model, clf_model, defaults_df = load_models()
+
+# ── Load raw data once for EDA tab ───────────────────────────────────────────
+@st.cache_data
+def load_raw_data():
+    df = pd.read_excel("data/AmesHousing-2.xls")
+    df["TotalBath"] = df["Full Bath"] + 0.5 * df["Half Bath"]
+    df["Decade"]    = (df["Year Built"] // 10 * 10).astype(int)
+    return df.dropna(subset=["SalePrice"])
+
+# ── Shared matplotlib style ───────────────────────────────────────────────────
+def style_ax(fig, ax):
+    fig.patch.set_facecolor(CREAM)
+    ax.set_facecolor(CREAM)
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    ax.spines["left"].set_color(SAGE)
+    ax.spines["bottom"].set_color(SAGE)
+    ax.tick_params(colors=CHARCOAL, labelsize=9)
+    ax.xaxis.label.set_color(CHARCOAL)
+    ax.yaxis.label.set_color(CHARCOAL)
+    ax.xaxis.label.set_fontsize(9)
+    ax.yaxis.label.set_fontsize(9)
+    ax.title.set_color(CHARCOAL)
+    ax.title.set_fontsize(11)
+    ax.title.set_fontweight("bold")
+    ax.yaxis.set_tick_params(length=0)
+    ax.xaxis.set_tick_params(length=3)
+    ax.grid(axis="y", color="#DDD9D0", linewidth=0.7, zorder=0)
+
+def insight_col(text: str):
+    """Render the right-column explanation with an olive left border."""
+    st.markdown(
+        f"""
+        <div style="border-left:3px solid {OLIVE}; padding:0.8rem 1.1rem;
+                    margin-top:0; line-height:1.7; font-size:0.88rem;
+                    color:{CHARCOAL}; text-align:justify;">
+          {text}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# ════════════════════════════════════════════════════════════════════════════
+# SIDEBAR
+# ════════════════════════════════════════════════════════════════════════════
+with st.sidebar:
+    st.image("assets/logo.png", use_container_width=True)
+
+    st.markdown(
+        f"<p style='text-align:center; font-size:0.72rem; letter-spacing:0.14em; "
+        f"font-weight:700; color:{SAGE}; margin-top:-0.6rem; margin-bottom:0.2rem;'>"
+        f"AMES  HOUSING</p>",
+        unsafe_allow_html=True,
+    )
+
+    st.divider()
+
+    st.markdown(
+        f"""
+        <div style="font-size:0.88rem; color:{CHARCOAL}; line-height:1.7;">
+        <strong style="font-size:0.9rem;">About this app</strong><br><br>
+        This tool uses two machine-learning models trained on 2,930 Ames, Iowa
+        home sales (2006–2010). Enter a few key property details to receive an
+        <em>estimated sale price</em> and a <em>premium-home classification</em>
+        — whether the property would rank in the top 25% of the market.<br><br>
+        All remaining features are held at training-set medians, so you only
+        need to fill in what you know.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# HEADER BAR
+# ════════════════════════════════════════════════════════════════════════════
+st.markdown(
+    f"""
+    <div style="
+        display:flex; align-items:center; justify-content:space-between;
+        padding:0.4rem 0 1rem 0;
+        border-bottom:2px solid {SAGE};
+        margin-bottom:1.2rem;
+    ">
+        <span style="font-size:1.45rem; font-weight:800; color:{CHARCOAL};
+                     letter-spacing:-0.01em;">
+            Ames Housing Predictor
+        </span>
+        <span style="font-size:0.72rem; font-weight:600; letter-spacing:0.10em;
+                     color:{SAGE}; text-transform:uppercase;">
+            Streamlit App
+        </span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ════════════════════════════════════════════════════════════════════════════
+# TABS
+# ════════════════════════════════════════════════════════════════════════════
+tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Predict", "EDA", "Neighborhoods"])
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 0 — HOME
+# ════════════════════════════════════════════════════════════════════════════
+with tab_home:
+
+    # ── HERO ────────────────────────────────────────────────────────────────
+    st.markdown(
+        f"""
+        <div style="text-align:center; padding:1.6rem 0 2.2rem 0;">
+          <img src="data:image/png;base64,{{logo_b64}}"
+               style="width:170px; height:auto; margin-bottom:1.1rem;" />
+          <h1 style="font-size:2.4rem; font-weight:800; color:{CHARCOAL};
+                     letter-spacing:-0.025em; margin:0 0 0.6rem 0; line-height:1.2;">
+            Discover what your Ames home is really worth
+          </h1>
+          <p style="font-size:1.0rem; color:{SAGE}; margin:0 auto;
+                    font-weight:500; line-height:1.6; max-width:540px;">
+            Enter a few property details and get an instant price estimate —
+            plus a read on whether it ranks in the top 25% of the market.
+          </p>
+        </div>
+        """.replace("{logo_b64}", __import__("base64").b64encode(
+            open("assets/logo.png", "rb").read()
+        ).decode()),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"<hr style='border-color:{SAGE}; opacity:0.45; margin-bottom:2rem;'>",
+        unsafe_allow_html=True,
+    )
+
+    # ── ABOUT AMES ──────────────────────────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+        f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.7rem;'>"
+        f"About Ames, Iowa</p>",
+        unsafe_allow_html=True,
+    )
+
+    _aw_l, _aw_r = st.columns([3, 2], gap="large")
+
+    with _aw_l:
+        st.markdown(
+            f"""
+            <div style="font-size:0.95rem; color:{CHARCOAL}; line-height:1.85;">
+              Ames is a mid-sized college town in central Iowa, shaped by Iowa State
+              University and a stable, tight-knit community of around 66,000 residents.
+              The housing market here runs the full spectrum — modest starter homes near
+              the rail corridor, solid family neighbourhoods in the middle ring, and
+              spacious new-build estates in the northern suburbs — which is exactly what
+              makes it such a clear lens for understanding
+              <em>what actually drives home value</em>.
+              Unlike many datasets, Ames captures a real market cycle (2006–2010) across
+              2,930 genuine transactions, with enough diversity to train models that
+              generalise beyond the obvious.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with _aw_r:
+        st.markdown(
+            f"""
+            <div style="background:{WHITE}; border:1px solid #DDD9D0;
+                        border-left:4px solid {OLIVE}; border-radius:0 10px 10px 0;
+                        padding:1.2rem 1.3rem;">
+              <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.13em;
+                          color:{SAGE}; text-transform:uppercase; margin-bottom:0.6rem;">
+                Dataset at a glance
+              </div>
+              <div style="font-size:0.88rem; color:{CHARCOAL}; line-height:1.75;">
+                <strong>2,930</strong> home sales<br>
+                <strong>2006 – 2010</strong> sale years<br>
+                <strong>80</strong> features per property<br>
+                Source: De Cock (2011), <em>Journal of Statistics Education</em>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # ── WELCOME BANNER ──────────────────────────────────────────────────────
+    st.markdown(
+        f"""
+        <div style="text-align:center; padding:1.8rem 0 0.9rem 0;">
+          <p style="font-size:0.72rem; font-weight:700; letter-spacing:0.18em;
+                    color:{SAGE}; text-transform:uppercase; margin:0 0 0.5rem 0;">
+            Welcome
+          </p>
+          <p style="font-size:1.2rem; font-weight:600; color:{CHARCOAL};
+                    margin:0; line-height:1.5;">
+            Let's find out what your Ames home is really worth.
+          </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ── LOCATOR MAP ─────────────────────────────────────────────────────────
+    _map_l, _map_c, _map_r = st.columns([1, 4, 1])
+    with _map_c:
+        st.markdown(
+            f"""
+            <div style="border:1px solid #DDD9D0; border-radius:10px;
+                        overflow:hidden; box-shadow:0 2px 8px rgba(43,43,40,0.07);
+                        margin-bottom:0.4rem;">
+            """,
+            unsafe_allow_html=True,
+        )
+        _locator = folium.Map(
+            location=[42.0308, -93.6319],
+            zoom_start=11,
+            tiles="CartoDB positron",
+            zoom_control=False,
+            scrollWheelZoom=False,
+            dragging=False,
+            attributionControl=False,
+        )
+        folium.Marker(
+            location=[42.0308, -93.6319],
+            tooltip="Ames, Iowa",
+            popup=folium.Popup(
+                "<b style='font-family:Inter,sans-serif;'>Ames, Iowa</b>"
+                "<br><span style='font-size:0.82em; color:#555;'>"
+                "Home to Iowa State University<br>and the 2,930 properties "
+                "in this dataset</span>",
+                max_width=220,
+            ),
+            icon=folium.Icon(color="darkgreen", icon="home", prefix="fa"),
+        ).add_to(_locator)
+        st_folium(_locator, height=320, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            f"<p style='text-align:center; font-size:0.75rem; color:{SAGE}; "
+            f"margin-top:0.3rem; margin-bottom:0.4rem;'>"
+            f"Ames, Iowa &mdash; Story County, central Iowa</p>",
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        f"<hr style='border-color:{SAGE}; opacity:0.35; margin:2rem 0;'>",
+        unsafe_allow_html=True,
+    )
+
+    # ── SIGHTSEEING IN AMES ─────────────────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+        f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>"
+        f"Sightseeing in Ames</p>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f"<p style='font-size:0.88rem; color:{CHARCOAL}; margin-bottom:0.9rem; "
+        f"line-height:1.6;'>Beyond the housing market, Ames has plenty worth seeing.</p>",
+        unsafe_allow_html=True,
+    )
+
+    def _img_b64(path: str) -> str:
+        import base64, mimetypes
+        try:
+            mime = mimetypes.guess_type(path)[0] or "image/jpeg"
+            with open(path, "rb") as f:
+                return f"data:{mime};base64,{base64.b64encode(f.read()).decode()}"
+        except FileNotFoundError:
+            return ""  # triggers placeholder below
+
+    def _sight_card_html(img_src: str, title: str, body: str) -> str:
+        if img_src:
+            img_block = (
+                f"<div style='height:220px; overflow:hidden; "
+                f"  border-radius:10px 10px 0 0; margin:-1px -1px 0 -1px;'>"
+                f"  <img src='{img_src}' style='width:100%; height:100%; "
+                f"  object-fit:cover; display:block;' />"
+                f"</div>"
+            )
+        else:
+            img_block = (
+                f"<div style='height:220px; background:{OLIVE}; opacity:0.18; "
+                f"border-radius:10px 10px 0 0; margin:-1px -1px 0 -1px;'></div>"
+            )
+        return (
+            f"<div style='background:{WHITE}; border:1px solid #DDD9D0; "
+            f"border-radius:10px; overflow:hidden; "
+            f"box-shadow:0 2px 8px rgba(43,43,40,0.07); height:100%;'>"
+            f"{img_block}"
+            f"<div style='padding:1.1rem 1.2rem 1.3rem;'>"
+            f"<div style='font-size:0.97rem; font-weight:700; color:{CHARCOAL}; "
+            f"  margin-bottom:0.45rem;'>{title}</div>"
+            f"<div style='font-size:0.84rem; color:{CHARCOAL}; line-height:1.65; "
+            f"  opacity:0.82;'>{body}</div>"
+            f"</div></div>"
+        )
+
+    _sg1, _sg2, _sg3 = st.columns(3, gap="medium")
+
+    with _sg1:
+        st.markdown(
+            _sight_card_html(
+                _img_b64("assets/reiman_gardens.jpg"),
+                "Reiman Gardens",
+                "Iowa State's botanical garden, home to a butterfly wing "
+                "and the world's largest concrete gnome.",
+            ),
+            unsafe_allow_html=True,
+        )
+
+    with _sg2:
+        st.markdown(
+            _sight_card_html(
+                _img_b64("assets/ada_hayden.jpeg"),
+                "Ada Hayden Heritage Park",
+                "A 430-acre park with two lakes and paved trails, named "
+                "after the first woman to earn a PhD from Iowa State.",
+            ),
+            unsafe_allow_html=True,
+        )
+
+    with _sg3:
+        st.markdown(
+            _sight_card_html(
+                _img_b64("assets/tedesco_trail.jpg"),
+                "Tedesco Environmental Learning Corridor",
+                "A compact nature trail connected to the city bike path, "
+                "known for wildlife viewing and a short, easy walk.",
+            ),
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        f"<hr style='border-color:{SAGE}; opacity:0.35; margin:2rem 0;'>",
+        unsafe_allow_html=True,
+    )
+
+    # ── DID YOU KNOW? FACT CARDS ────────────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+        f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.9rem;'>"
+        f"Did You Know?</p>",
+        unsafe_allow_html=True,
+    )
+
+    _fc_base = (
+        f"background:{WHITE}; border:1px solid #DDD9D0; border-top:3px solid {OLIVE}; "
+        f"border-radius:10px; padding:1.3rem 1.2rem 1.2rem; text-align:center; "
+        f"box-shadow:0 2px 8px rgba(43,43,40,0.07); height:100%;"
+    )
+
+    fc1, fc2, fc3, fc4 = st.columns(4, gap="medium")
+
+    with fc1:
+        st.markdown(
+            f"<div style='{_fc_base}'>"
+            f"<div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em; "
+            f"  color:{SAGE}; text-transform:uppercase; margin-bottom:0.55rem;'>"
+            f"  Median Price</div>"
+            f"<div style='font-size:1.55rem; font-weight:800; color:{OLIVE}; "
+            f"  letter-spacing:-0.02em; line-height:1.1; margin-bottom:0.5rem;'>"
+            f"  $160,000</div>"
+            f"<div style='font-size:0.78rem; color:{CHARCOAL}; line-height:1.55; "
+            f"  opacity:0.75;'>Half of all 2,930 homes sold below this figure</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    with fc2:
+        st.markdown(
+            f"<div style='{_fc_base}'>"
+            f"<div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em; "
+            f"  color:{SAGE}; text-transform:uppercase; margin-bottom:0.55rem;'>"
+            f"  Location Spread</div>"
+            f"<div style='font-size:1.55rem; font-weight:800; color:{OLIVE}; "
+            f"  letter-spacing:-0.02em; line-height:1.1; margin-bottom:0.5rem;'>"
+            f"  3.6&times;</div>"
+            f"<div style='font-size:0.78rem; color:{CHARCOAL}; line-height:1.55; "
+            f"  opacity:0.75;'>Price gap — Stone Brook ($319k) vs Meadow Village ($88k)</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    with fc3:
+        st.markdown(
+            f"<div style='{_fc_base}'>"
+            f"<div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em; "
+            f"  color:{SAGE}; text-transform:uppercase; margin-bottom:0.55rem;'>"
+            f"  Top Quality</div>"
+            f"<div style='font-size:1.55rem; font-weight:800; color:{OLIVE}; "
+            f"  letter-spacing:-0.02em; line-height:1.1; margin-bottom:0.5rem;'>"
+            f"  4.7%</div>"
+            f"<div style='font-size:0.78rem; color:{CHARCOAL}; line-height:1.55; "
+            f"  opacity:0.75;'>Homes rated 9 or 10 out of 10 — genuinely rare</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    with fc4:
+        st.markdown(
+            f"<div style='{_fc_base}'>"
+            f"<div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em; "
+            f"  color:{SAGE}; text-transform:uppercase; margin-bottom:0.55rem;'>"
+            f"  Area vs Price</div>"
+            f"<div style='font-size:1.55rem; font-weight:800; color:{OLIVE}; "
+            f"  letter-spacing:-0.02em; line-height:1.1; margin-bottom:0.5rem;'>"
+            f"  r = 0.71</div>"
+            f"<div style='font-size:0.78rem; color:{CHARCOAL}; line-height:1.55; "
+            f"  opacity:0.75;'>Correlation between living area and sale price</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        f"<hr style='border-color:{SAGE}; opacity:0.35; margin:2rem 0;'>",
+        unsafe_allow_html=True,
+    )
+
+    # ── WHAT THIS APP DOES ──────────────────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+        f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.9rem;'>"
+        f"What This App Does</p>",
+        unsafe_allow_html=True,
+    )
+
+    mod_l, mod_r = st.columns(2, gap="large")
+
+    with mod_l:
+        st.markdown(
+            f"""
+            <div style="background:{WHITE}; border:1px solid #DDD9D0;
+                        border-radius:10px; padding:1.5rem 1.6rem;">
+              <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.13em;
+                          color:{SAGE}; text-transform:uppercase; margin-bottom:0.6rem;">
+                Price Prediction
+              </div>
+              <div style="font-size:1.0rem; font-weight:700; color:{CHARCOAL};
+                          margin-bottom:0.55rem;">
+                What will this home sell for?
+              </div>
+              <div style="font-size:0.88rem; color:{CHARCOAL}; line-height:1.75;
+                          opacity:0.85;">
+                An XGBoost regression model estimates the sale price in dollars,
+                trained across 80 property features. It consistently outperforms a
+                simple median-price baseline — you get a market-calibrated number,
+                not a rough guess.
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with mod_r:
+        st.markdown(
+            f"""
+            <div style="background:{WHITE}; border:1px solid #DDD9D0;
+                        border-radius:10px; padding:1.5rem 1.6rem;">
+              <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.13em;
+                          color:{SAGE}; text-transform:uppercase; margin-bottom:0.6rem;">
+                Premium Classification
+              </div>
+              <div style="font-size:1.0rem; font-weight:700; color:{CHARCOAL};
+                          margin-bottom:0.55rem;">
+                Is it a top-25% home?
+              </div>
+              <div style="font-size:0.88rem; color:{CHARCOAL}; line-height:1.75;
+                          opacity:0.85;">
+                A second XGBoost classifier gives a clear yes/no verdict on whether
+                the property ranks in the top quarter of the Ames market, along with
+                a confidence score — useful for buyers and sellers who want to know if
+                a home is genuinely high-value.
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("<div style='margin-bottom:2rem;'></div>", unsafe_allow_html=True)
+
+    # ── CALL TO ACTION ──────────────────────────────────────────────────────
+    st.markdown(
+        f"""
+        <div style="background:{CREAM}; border:1.5px solid {SAGE};
+                    border-left:5px solid {OLIVE}; border-radius:10px;
+                    padding:1.4rem 1.8rem;">
+          <div style="font-size:1.05rem; font-weight:700; color:{CHARCOAL};
+                      margin-bottom:0.35rem;">
+            Ready to see what your home could be worth?
+          </div>
+          <div style="font-size:0.88rem; color:{CHARCOAL}; opacity:0.75;
+                      line-height:1.6;">
+            Head to the <strong style="color:{OLIVE};">Predict</strong> tab above
+            and enter your property details — it takes under a minute.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 1 — PREDICT
+# ════════════════════════════════════════════════════════════════════════════
+NEIGHBORHOOD_NAMES = {
+    "NridgHt": "Northridge Heights",
+    "NoRidge":  "Northridge",
+    "StoneBr":  "Stone Brook",
+    "Somerst":  "Somerset",
+    "Veenker":  "Veenker",
+    "CollgCr":  "College Creek",
+    "Gilbert":  "Gilbert",
+    "Crawfor":  "Crawford",
+    "Timber":   "Timberland",
+    "SawyerW":  "Sawyer West",
+    "Blmngtn":  "Bloomington Heights",
+    "ClearCr":  "Clear Creek",
+    "Mitchel":  "Mitchell",
+    "NAmes":    "North Ames",
+    "Edwards":  "Edwards",
+    "OldTown":  "Old Town",
+    "BrkSide":  "Brookside",
+    "IDOTRR":   "Iowa DOT & Railroad Area",
+    "MeadowV":  "Meadow Village",
+    "Sawyer":   "Sawyer",
+    "SWISU":    "SW of Iowa State",
+    "BrDale":   "Briardale",
+    "NPkVill":  "Northpark Village",
+    "Blueste":  "Bluestem",
+}
+# Reverse map: full name -> code, used after selectbox selection
+_NAME_TO_CODE = {v: k for k, v in NEIGHBORHOOD_NAMES.items()}
+
+with tab_predict:
+    st.markdown(
+        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+        f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>"
+        f"HOUSE FEATURES</p>",
+        unsafe_allow_html=True,
+    )
+
+    with st.form("predict_form"):
+        left_col, right_col = st.columns(2, gap="large")
+
+        with left_col:
+            overall_qual = st.slider(
+                "Overall Quality",
+                min_value=1, max_value=10,
+                value=int(defaults_df["Overall Qual"].iloc[0]),
+                help="1 = Very Poor   10 = Excellent",
+            )
+            gr_liv_area = st.slider(
+                "Above-Ground Living Area (sq ft)",
+                min_value=300, max_value=5_000,
+                value=int(defaults_df["Gr Liv Area"].iloc[0]),
+                step=50,
+            )
+            year_built = st.slider(
+                "Year Built",
+                min_value=1872, max_value=2010,
+                value=int(defaults_df["Year Built"].iloc[0]),
+            )
+
+        with right_col:
+            _default_bath = (
+                float(defaults_df["Full Bath"].iloc[0])
+                + 0.5 * float(defaults_df["Half Bath"].iloc[0])
+            )
+            total_bath = st.slider(
+                "Total Bathrooms (full + 0.5 per half bath)",
+                min_value=0.0, max_value=5.0,
+                value=_default_bath,
+                step=0.5,
+                format="%.1f",
+            )
+            garage_cars = st.slider(
+                "Garage Capacity (cars)",
+                min_value=0, max_value=4,
+                value=int(defaults_df["Garage Cars"].iloc[0]),
+            )
+            _default_code = str(defaults_df["Neighborhood"].iloc[0])
+            _full_names = list(NEIGHBORHOOD_NAMES.values())
+            neighborhood_full = st.selectbox(
+                "Neighborhood",
+                options=_full_names,
+                index=_full_names.index(NEIGHBORHOOD_NAMES[_default_code]),
+            )
+
+        submitted = st.form_submit_button("Predict", use_container_width=True)
+
+    # ── Prediction ───────────────────────────────────────────────────────────
+    if submitted:
+        full_bath_val = int(total_bath)
+        half_bath_val = 1 if (total_bath % 1 >= 0.4) else 0
+
+        input_df = defaults_df.copy()
+
+        # --- raw feature overrides ---
+        input_df["Overall Qual"] = float(overall_qual)
+        input_df["Gr Liv Area"]  = float(gr_liv_area)
+        input_df["Year Built"]   = float(year_built)
+        input_df["Full Bath"]    = float(full_bath_val)
+        input_df["Half Bath"]    = float(half_bath_val)
+        input_df["Garage Cars"]  = float(garage_cars)
+        input_df["Neighborhood"] = _NAME_TO_CODE[neighborhood_full]
+
+        # --- recompute engineered features so the model sees consistent values ---
+        # Formulas mirror what the training notebook computed before fitting.
+        yr_sold   = float(input_df["Yr Sold"].iloc[0])        # keep default sale year
+        bsmt_sf   = float(input_df["Total Bsmt SF"].iloc[0])  # keep default basement
+
+        total_sf  = bsmt_sf + float(gr_liv_area)  # Gr Liv Area ≈ 1st + 2nd Flr SF
+        house_age = max(0, yr_sold - float(year_built))
+        remod_age = max(0, yr_sold - float(input_df["Year Remod/Add"].iloc[0]))
+        total_bath_full = (
+            float(full_bath_val)
+            + 0.5 * float(half_bath_val)
+            + float(input_df["Bsmt Full Bath"].iloc[0])
+            + 0.5 * float(input_df["Bsmt Half Bath"].iloc[0])
+        )
+
+        input_df["TotalSF"]    = total_sf
+        input_df["Qual_x_SF"]  = float(overall_qual) * total_sf
+        input_df["HouseAge"]   = house_age
+        input_df["RemodAge"]   = remod_age
+        input_df["TotalBath"]  = total_bath_full
+        input_df["AgeCategory"] = pd.cut(
+            pd.Series([house_age]),
+            bins=[-1, 10, 30, 60, 200],
+            labels=["New (0-10y)", "Recent (10-30y)", "Established (30-60y)", "Old (60y+)"],
+        ).iloc[0]
+
+        predicted_price = reg_model.predict(input_df)[0]
+        premium_label   = clf_model.predict(input_df)[0]
+        premium_proba   = clf_model.predict_proba(input_df)[0][1]
+
+        st.markdown(
+            f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+            f"color:{SAGE}; text-transform:uppercase; margin-top:1.8rem; margin-bottom:0.7rem;'>"
+            f"PREDICTION RESULTS</p>",
+            unsafe_allow_html=True,
+        )
+
+        card_left, card_right = st.columns(2, gap="large")
+
+        with card_left:
+            st.markdown(
+                f"""
+                <div style="background:{WHITE}; border:1px solid #DDD9D0;
+                            border-radius:10px; padding:1.8rem 1.6rem; text-align:center;">
+                  <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.13em;
+                              color:{SAGE}; text-transform:uppercase; margin-bottom:0.6rem;">
+                    Estimated Sale Price
+                  </div>
+                  <div style="font-size:2.6rem; font-weight:800; color:{CHARCOAL};
+                              letter-spacing:-0.02em; line-height:1.1;">
+                    ${predicted_price:,.0f}
+                  </div>
+                  <div style="font-size:0.75rem; color:#AAA; margin-top:0.6rem;
+                              font-weight:500;">
+                    Regression &mdash; XGBoost
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with card_right:
+            if premium_label == 1:
+                badge_bg  = OLIVE
+                badge_txt = "Premium Home"
+                conf_line = f"{premium_proba * 100:.1f}% model confidence"
+            else:
+                badge_bg  = SAGE
+                badge_txt = "Not Premium"
+                conf_line = f"{(1 - premium_proba) * 100:.1f}% model confidence"
+
+            st.markdown(
+                f"""
+                <div style="background:{WHITE}; border:1px solid #DDD9D0;
+                            border-radius:10px; padding:1.8rem 1.6rem; text-align:center;">
+                  <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.13em;
+                              color:{SAGE}; text-transform:uppercase; margin-bottom:0.6rem;">
+                    High-Value Home?
+                  </div>
+                  <div style="margin:0.5rem 0 0.6rem 0;">
+                    <span style="display:inline-block; background:{badge_bg}; color:white;
+                                 border-radius:20px; padding:0.35rem 1.5rem;
+                                 font-weight:700; font-size:1.05rem; letter-spacing:0.01em;">
+                      {badge_txt}
+                    </span>
+                  </div>
+                  <div style="font-size:0.82rem; color:{CHARCOAL}; font-weight:500;">
+                    {conf_line}
+                  </div>
+                  <div style="font-size:0.75rem; color:#AAA; margin-top:0.4rem; font-weight:500;">
+                    Classification &mdash; XGBoost &middot; Top 25% threshold
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown(
+            f"<p style='font-size:0.78rem; color:#AAA; margin-top:1rem; line-height:1.5;'>"
+            f"Statistical estimate based on Ames, Iowa sales data (2006–2010). "
+            f"Not a certified appraisal — do not use as the sole basis for financial decisions.</p>",
+            unsafe_allow_html=True,
+        )
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 2 — EDA
+# ════════════════════════════════════════════════════════════════════════════
+with tab_eda:
+    raw = load_raw_data()
+
+    # ── Pre-compute stats used in insight text ────────────────────────────────
+    median_price   = raw["SalePrice"].median()
+    mean_price     = raw["SalePrice"].mean()
+    top5_threshold = raw["SalePrice"].quantile(0.95)
+
+    nbhd_med      = raw.groupby("Neighborhood")["SalePrice"].median()
+    richest_nbhd  = nbhd_med.idxmax()
+    cheapest_nbhd = nbhd_med.idxmin()
+    price_ratio   = nbhd_med.max() / nbhd_med.min()
+
+    qual_med     = raw.groupby("Overall Qual")["SalePrice"].median()
+    price_jump   = qual_med.get(8, 0) / qual_med.get(6, 1) - 1
+    top_qual_pct = (raw["Overall Qual"] >= 9).mean() * 100
+
+    area_corr = raw[["Gr Liv Area", "SalePrice"]].corr().iloc[0, 1]
+
+    # ── Colour map shared by all charts ──────────────────────────────────────
+    cmap = mcolors.LinearSegmentedColormap.from_list("oa", [SAGE, OLIVE])
+
+    st.markdown(
+        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
+        f"color:{SAGE}; text-transform:uppercase; margin-bottom:1.2rem;'>"
+        f"{len(raw):,} HOMES &middot; AMES, IOWA &middot; 2006–2010</p>",
+        unsafe_allow_html=True,
+    )
+
+    def chart_caption(text: str):
+        st.markdown(
+            f'<div style="font-size:0.88rem; color:{CHARCOAL}; line-height:1.7; '
+            f'text-align:justify; margin-top:0.6rem; margin-bottom:1.8rem;">'
+            f'{text}</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── Chart 1: Sale Price Distribution ─────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:1.0rem; font-weight:700; color:{CHARCOAL}; margin-bottom:0.5rem;'>"
+        f"How are sale prices distributed?</p>",
+        unsafe_allow_html=True,
+    )
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+    n, bins, patches = ax.hist(raw["SalePrice"] / 1_000, bins=50, edgecolor="none")
+    norm = mcolors.Normalize(vmin=bins[0], vmax=bins[-1])
+    for patch, left in zip(patches, bins[:-1]):
+        patch.set_facecolor(cmap(norm(left)))
+        patch.set_alpha(0.88)
+    ax.axvline(median_price / 1_000, color=CHARCOAL, linewidth=1.8,
+               linestyle="--", zorder=5)
+    ax.text(median_price / 1_000 + 3, ax.get_ylim()[1] * 0.88,
+            f"Median  ${median_price/1000:.0f}k",
+            color=CHARCOAL, fontsize=11, fontweight="600")
+    ax.set_xlabel("Sale Price ($k)", labelpad=8, fontsize=12)
+    ax.set_ylabel("Number of Homes", labelpad=8, fontsize=12)
+    ax.set_title("Sale Price Distribution", pad=12, fontsize=14)
+    ax.tick_params(labelsize=11)
+    style_ax(fig, ax)
+    plt.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+
+    chart_caption(
+        f"The median Ames home sold for <strong>${median_price:,.0f}</strong> — "
+        f"well below the mean of <strong>${mean_price:,.0f}</strong>, pulled up by "
+        f"a long tail of luxury sales. "
+        f"The top 25% threshold used to define a Premium Home sits at "
+        f"<strong>${raw['SalePrice'].quantile(0.75):,.0f}</strong>."
+    )
+
+    # ── Chart 2: Neighborhood Rankings ───────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:1.0rem; font-weight:700; color:{CHARCOAL}; margin-bottom:0.5rem;'>"
+        f"Which neighbourhoods command the highest prices?</p>",
+        unsafe_allow_html=True,
+    )
+
+    nbhd_sorted = nbhd_med.sort_values(ascending=True)
+    norm2 = mcolors.Normalize(vmin=nbhd_sorted.min(), vmax=nbhd_sorted.max())
+    bar_colors2 = [cmap(norm2(v)) for v in nbhd_sorted.values]
+
+    fig, ax = plt.subplots(figsize=(14, 8))
+    bars = ax.barh(nbhd_sorted.index, nbhd_sorted.values / 1_000,
+                   color=bar_colors2, edgecolor="none", height=0.65)
+    for bar, val in zip(bars, nbhd_sorted.values):
+        ax.text(bar.get_width() + 1.5,
+                bar.get_y() + bar.get_height() / 2,
+                f"${val/1000:.0f}k",
+                va="center", fontsize=9, color=CHARCOAL)
+    ax.set_xlabel("Median Sale Price ($k)", labelpad=8, fontsize=12)
+    ax.set_title("Median Sale Price by Neighbourhood", pad=12, fontsize=14)
+    ax.tick_params(labelsize=11)
+    ax.xaxis.set_major_formatter(mticker.FormatStrFormatter("$%dk"))
+    ax.set_xlim(right=nbhd_sorted.max() / 1_000 * 1.18)
+    style_ax(fig, ax)
+    ax.grid(axis="x", color="#DDD9D0", linewidth=0.7)
+    ax.grid(axis="y", visible=False)
+    plt.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+
+    chart_caption(
+        f"<strong>{richest_nbhd}</strong> commands the highest median price at "
+        f"<strong>${nbhd_med[richest_nbhd]:,.0f}</strong> — "
+        f"<strong>{price_ratio:.1f}×</strong> more than the most affordable "
+        f"neighbourhood, <strong>{cheapest_nbhd}</strong> "
+        f"(<strong>${nbhd_med[cheapest_nbhd]:,.0f}</strong>). "
+        f"Location is one of the strongest predictors in both models."
+    )
+
+    # ── Chart 3: Quality vs Median Price ─────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:1.0rem; font-weight:700; color:{CHARCOAL}; margin-bottom:0.5rem;'>"
+        f"How much does build quality matter?</p>",
+        unsafe_allow_html=True,
+    )
+
+    qual_vals   = qual_med.index.astype(int)
+    qual_prices = qual_med.values / 1_000
+    norm3 = mcolors.Normalize(vmin=qual_prices.min(), vmax=qual_prices.max())
+    bar_colors3 = [cmap(norm3(v)) for v in qual_prices]
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+    bars3 = ax.bar(qual_vals, qual_prices, color=bar_colors3,
+                   edgecolor="none", width=0.65, zorder=3)
+    for bar, val in zip(bars3, qual_prices):
+        ax.text(bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 2,
+                f"${val:.0f}k",
+                ha="center", va="bottom", fontsize=10, color=CHARCOAL)
+    ax.set_xlabel("Overall Quality Rating (1–10)", labelpad=8, fontsize=12)
+    ax.set_ylabel("Median Sale Price ($k)", labelpad=8, fontsize=12)
+    ax.set_title("Median Sale Price by Overall Quality", pad=12, fontsize=14)
+    ax.tick_params(labelsize=11)
+    ax.set_xticks(qual_vals)
+    ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("$%dk"))
+    style_ax(fig, ax)
+    plt.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+
+    chart_caption(
+        f"Moving from quality rating 6 to 8 adds roughly "
+        f"<strong>{price_jump * 100:.0f}%</strong> to the median price — "
+        f"a gap that can exceed $60,000 on a single transaction. "
+        f"Only <strong>{top_qual_pct:.1f}%</strong> of homes in the dataset achieved "
+        f"a rating of 9 or 10, making top-tier construction genuinely rare."
+    )
+
+    # ── Chart 4: Living Area vs Sale Price (scatter) ──────────────────────────
+    st.markdown(
+        f"<p style='font-size:1.0rem; font-weight:700; color:{CHARCOAL}; margin-bottom:0.5rem;'>"
+        f"Does more space mean more money?</p>",
+        unsafe_allow_html=True,
+    )
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+    sc = ax.scatter(
+        raw["Gr Liv Area"], raw["SalePrice"] / 1_000,
+        c=raw["Overall Qual"],
+        cmap=mcolors.LinearSegmentedColormap.from_list("oa2", [SAGE, OLIVE]),
+        alpha=0.45, s=14, linewidths=0, zorder=3,
+    )
+    m, b = np.polyfit(raw["Gr Liv Area"], raw["SalePrice"] / 1_000, 1)
+    x_line = np.linspace(raw["Gr Liv Area"].min(), raw["Gr Liv Area"].max(), 200)
+    ax.plot(x_line, m * x_line + b, color=CHARCOAL, linewidth=2,
+            linestyle="--", zorder=5, label=f"Trend  (r = {area_corr:.2f})")
+    ax.legend(fontsize=11, frameon=False, loc="upper left")
+    cbar = plt.colorbar(sc, ax=ax, pad=0.01)
+    cbar.set_label("Overall Quality", fontsize=11, color=CHARCOAL)
+    cbar.ax.tick_params(labelsize=10, colors=CHARCOAL)
+    cbar.outline.set_edgecolor(SAGE)
+    ax.set_xlabel("Above-Ground Living Area (sq ft)", labelpad=8, fontsize=12)
+    ax.set_ylabel("Sale Price ($k)", labelpad=8, fontsize=12)
+    ax.set_title("Living Area vs Sale Price, coloured by Quality", pad=12, fontsize=14)
+    ax.tick_params(labelsize=11)
+    ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("$%dk"))
+    style_ax(fig, ax)
+    plt.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+
+    chart_caption(
+        f"Living area correlates with price at <strong>r = {area_corr:.2f}</strong>, "
+        f"but the colour overlay shows that two homes with identical square footage "
+        f"can differ by tens of thousands of dollars based on build quality alone. "
+        f"This interaction is captured by the engineered Quality × Area feature, "
+        f"which is the single strongest predictor in both models."
+    )
+
+    # ── Chart 5: What drives premium-home classification? ────────────────────
+    st.markdown(
+        f"<p style='font-size:1.0rem; font-weight:700; color:{CHARCOAL}; margin-bottom:0.5rem;'>"
+        f"What makes a home 'premium'?</p>",
+        unsafe_allow_html=True,
+    )
+
+    import re
+
+    feat_names = clf_model[:-1].get_feature_names_out()
+    importances = clf_model[-1].feature_importances_
+
+    def base_name(n):
+        n = re.sub(r"^(num__|cat__)", "", n)
+        parts = n.rsplit("_", 1)
+        if len(parts) == 2 and parts[1].replace(".", "").isalnum() and len(parts[1]) <= 8:
+            return parts[0]
+        return n
+
+    imp_series = pd.Series(importances, index=feat_names)
+    grouped_imp = (
+        imp_series.groupby(imp_series.index.map(base_name))
+        .sum()
+        .sort_values(ascending=False)
+        .head(10)
+    )
+
+    label_map = {
+        "Qual_x": "Quality × Area Score",
+        "Kitchen Qual": "Kitchen Quality",
+        "Bldg Type": "Building Type",
+        "Garage Finish": "Garage Finish",
+        "Neighborhood": "Neighbourhood",
+        "TotalBath": "Total Bathrooms",
+        "Heating QC": "Heating Quality",
+        "Exter Qual": "Exterior Quality",
+        "Fireplaces": "Fireplaces",
+        "TotalSF": "Total Square Footage",
+        "Bsmt Unf SF": "Unfinished Basement SF",
+        "Exterior 1st": "Exterior Material",
+        "Kitchen AbvGr": "Kitchens Above Grade",
+        "Year Remod/Add": "Remodel Year",
+        "Bsmt Qual": "Basement Quality",
+    }
+    grouped_imp.index = [label_map.get(i, i) for i in grouped_imp.index]
+    grouped_imp = grouped_imp.sort_values(ascending=True)
+
+    norm5 = mcolors.Normalize(vmin=grouped_imp.min(), vmax=grouped_imp.max())
+    bar_colors5 = [cmap(norm5(v)) for v in grouped_imp.values]
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+    bars5 = ax.barh(grouped_imp.index, grouped_imp.values * 100,
+                    color=bar_colors5, edgecolor="none", height=0.62)
+    for bar, val in zip(bars5, grouped_imp.values):
+        ax.text(bar.get_width() + 0.15,
+                bar.get_y() + bar.get_height() / 2,
+                f"{val*100:.1f}%",
+                va="center", fontsize=10, color=CHARCOAL)
+    ax.set_xlabel("Feature Importance (%)", labelpad=8, fontsize=12)
+    ax.set_title("Top 10 Drivers of Premium Classification", pad=12, fontsize=14)
+    ax.tick_params(labelsize=11)
+    ax.set_xlim(right=grouped_imp.max() * 100 * 1.22)
+    ax.xaxis.set_major_formatter(mticker.FormatStrFormatter("%.0f%%"))
+    style_ax(fig, ax)
+    ax.grid(axis="x", color="#DDD9D0", linewidth=0.7)
+    ax.grid(axis="y", visible=False)
+    plt.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+
+    top1 = grouped_imp.index[-1]
+    top1_pct = grouped_imp.values[-1] * 100
+    top3_pct = grouped_imp.values[-3:].sum() * 100
+    chart_caption(
+        f"<strong>{top1}</strong> alone accounts for "
+        f"<strong>{top1_pct:.0f}%</strong> of the classifier's decision weight — "
+        f"it multiplies appraiser quality by total square footage, capturing both "
+        f"size and finish in a single number. "
+        f"The top 3 features together explain <strong>{top3_pct:.0f}%</strong> "
+        f"of all importance, showing how concentrated the signal is."
+    )
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 3 — NEIGHBORHOODS
+# ════════════════════════════════════════════════════════════════════════════
+
+_TIER_ORDER = ["Premium", "Mid-Range", "Budget"]
+
+_TIER_GROUPS = {
+    "Premium":   ["NridgHt", "NoRidge", "StoneBr", "Somerst", "Veenker"],
+    "Mid-Range": ["CollgCr", "Gilbert", "Crawfor", "Timber", "SawyerW",
+                  "Blmngtn", "ClearCr", "Mitchel"],
+    "Budget":    ["NAmes", "Edwards", "OldTown", "BrkSide", "IDOTRR",
+                  "MeadowV", "Sawyer", "SWISU", "BrDale", "NPkVill", "Blueste"],
+}
+
+_BADGE_STYLE = {
+    "Premium":   (OLIVE,  "white"),
+    "Mid-Range": (SAGE,   "white"),
+    "Budget":    (CREAM,  CHARCOAL),
+}
+
+def _nbhd_card(code: str):
+    full_name, description, tier, _ = NEIGHBORHOOD_INFO[code]
+    badge_bg, badge_fg = _BADGE_STYLE[tier]
+    border = f"1px solid {SAGE}" if tier == "Budget" else "none"
+    with st.container(border=True):
+        st.markdown(
+            f"""
+            <div style="padding:0.25rem 0.1rem;">
+              <div style="display:flex; align-items:baseline; gap:0.55rem;
+                          margin-bottom:0.35rem;">
+                <span style="font-size:0.95rem; font-weight:700; color:{OLIVE};">
+                  {full_name}
+                </span>
+                <span style="font-size:0.72rem; color:#999; font-weight:500;">
+                  {code}
+                </span>
+              </div>
+              <span style="display:inline-block; background:{badge_bg};
+                           color:{badge_fg}; border-radius:10px;
+                           padding:0.12rem 0.65rem; font-size:0.68rem;
+                           font-weight:700; letter-spacing:0.07em;
+                           border:{border}; margin-bottom:0.45rem;">
+                {tier}
+              </span>
+              <div style="font-size:0.83rem; color:{CHARCOAL}; line-height:1.65;">
+                {description}
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+with tab_nbhd:
+    st.markdown(
+        f"<h2 style='font-size:1.3rem; font-weight:800; color:{CHARCOAL}; "
+        f"margin-bottom:0.3rem;'>Ames Neighborhood Guide</h2>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f"<p style='font-size:0.88rem; color:{SAGE}; margin-bottom:1.2rem;'>"
+        f"Browse all neighborhoods in the dataset — select one in the Predict "
+        f"tab to estimate its home value.</p>",
+        unsafe_allow_html=True,
+    )
+
+    # ── Interactive map ───────────────────────────────────────────────────────
+    _COORDS = {
+        "NridgHt": (42.0525, -93.6553),
+        "NoRidge":  (42.0500, -93.6600),
+        "StoneBr":  (42.0606, -93.6175),
+        "Somerst":  (42.0612, -93.6089),
+        "Veenker":  (42.0325, -93.6481),
+        "CollgCr":  (42.0206, -93.6842),
+        "Gilbert":  (42.1053, -93.6472),
+        "Crawfor":  (42.0289, -93.6150),
+        "Timber":   (41.9975, -93.6800),
+        "SawyerW":  (42.0131, -93.6928),
+        "Blmngtn":  (42.0642, -93.6350),
+        "ClearCr":  (41.9998, -93.6600),
+        "Mitchel":  (41.9958, -93.6319),
+        "NAmes":    (42.0408, -93.6319),
+        "Edwards":  (42.0208, -93.6619),
+        "OldTown":  (42.0256, -93.6089),
+        "BrkSide":  (42.0289, -93.6200),
+        "IDOTRR":   (42.0175, -93.6175),
+        "MeadowV":  (41.9906, -93.6089),
+        "Sawyer":   (42.0089, -93.6750),
+        "SWISU":    (42.0175, -93.6481),
+        "BrDale":   (42.0392, -93.6692),
+        "NPkVill":  (42.0525, -93.6692),
+        "Blueste":  (42.0442, -93.6089),
+    }
+
+    _MARKER_COLOR = {
+        "Premium":   "#3D4F27",   # dark olive — clearly distinct on light basemap
+        "Mid-Range": "#C4A35A",   # warm amber — visually separate from green tones
+        "Budget":    "#8B9E78",   # light sage-green — soft, readable against cream tiles
+    }
+
+    m = folium.Map(
+        location=[42.0308, -93.6319],
+        zoom_start=12,
+        tiles="CartoDB positron",
+    )
+
+    for code, (lat, lon) in _COORDS.items():
+        if code not in NEIGHBORHOOD_INFO:
+            continue
+        full_name, _, tier, _ = NEIGHBORHOOD_INFO[code]
+        color = _MARKER_COLOR[tier]
+        folium.CircleMarker(
+            location=[lat, lon],
+            radius=10,
+            color=color,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.85,
+            weight=1.5,
+            popup=folium.Popup(
+                f"<b style='font-family:Inter,sans-serif;'>{full_name}</b>"
+                f"<br><span style='color:#777;font-size:0.85em;'>{tier}</span>",
+                max_width=180,
+            ),
+            tooltip=full_name,
+        ).add_to(m)
+
+    st_folium(m, height=400, use_container_width=True)
+
+    # ── Map legend ────────────────────────────────────────────────────────────
+    st.markdown(
+        f"""
+        <div style="display:flex; gap:1.6rem; margin-top:0.5rem;
+                    margin-bottom:1.6rem; font-size:0.82rem; color:{CHARCOAL};">
+          <span style="display:flex; align-items:center; gap:0.45rem;">
+            <span style="display:inline-block; width:12px; height:12px;
+                         border-radius:50%; background:#3D4F27;"></span>
+            Premium
+          </span>
+          <span style="display:flex; align-items:center; gap:0.45rem;">
+            <span style="display:inline-block; width:12px; height:12px;
+                         border-radius:50%; background:#C4A35A;"></span>
+            Mid-range
+          </span>
+          <span style="display:flex; align-items:center; gap:0.45rem;">
+            <span style="display:inline-block; width:12px; height:12px;
+                         border-radius:50%; background:#8B9E78;"></span>
+            Budget
+          </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    for tier in _TIER_ORDER:
+        codes = _TIER_GROUPS[tier]
+        badge_bg, badge_fg = _BADGE_STYLE[tier]
+        border = f"1px solid {SAGE}" if tier == "Budget" else "none"
+
+        st.markdown(
+            f"""
+            <div style="display:inline-flex; align-items:center; gap:0.6rem;
+                        margin-bottom:0.8rem; margin-top:0.4rem;">
+              <span style="font-size:0.70rem; font-weight:700;
+                           letter-spacing:0.13em; color:{SAGE};
+                           text-transform:uppercase;">{tier}</span>
+              <span style="display:inline-block; width:2.5rem; height:2px;
+                           background:{SAGE}; border-radius:2px;"></span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Two-column grid
+        pairs = [codes[i:i+2] for i in range(0, len(codes), 2)]
+        for pair in pairs:
+            cols = st.columns(2, gap="large")
+            for col, code in zip(cols, pair):
+                with col:
+                    _nbhd_card(code)
+            # If odd number, leave second column empty (already handled by zip)
+
+        st.markdown("<br>", unsafe_allow_html=True)
