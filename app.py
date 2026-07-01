@@ -261,21 +261,13 @@ html, body, .stApp, .stApp * {{
     color: {OLIVE} !important;
 }}
 
-/* ── Sliders ── */
-[data-testid="stSlider"] [role="slider"] {{
-    background-color: {OLIVE} !important;
-    border-color: {OLIVE} !important;
-}}
-[data-testid="stSlider"] > div > div > div > div {{
-    background-color: {OLIVE} !important;
-}}
-
 /* ── Widget labels ── */
 [data-testid="stWidgetLabel"] p,
 [data-testid="stWidgetLabel"] label {{
     color: {CHARCOAL} !important;
-    font-size: 0.92rem !important;
-    font-weight: 500 !important;
+    font-size: 0.96rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
 }}
 
 /* ── Selectbox text ── */
@@ -314,59 +306,107 @@ hr {{
     box-shadow: 0 2px 10px rgba(43,43,40,0.05);
 }}
 
-/* ── Replace Streamlit default orange/red with muted olive #8B8A5A ── */
+/* ══ PREMIUM SLIDER SYSTEM ══════════════════════════════════════════════════ */
 
-/* Slider: filled (active) track */
+/* Slider container spacing */
+[data-testid="stSlider"] {{
+    padding-bottom: 0.3rem !important;
+}}
+
+/* Track: full bar — light cream rail */
+[data-testid="stSlider"] [data-baseweb="slider"] > div > div:first-child {{
+    background-color: #DDD9D0 !important;
+    height: 3px !important;
+    border-radius: 3px !important;
+}}
+/* Track: active (filled) portion — olive */
+[data-testid="stSlider"] [data-baseweb="slider"] > div > div:first-child > div:first-child {{
+    background-color: #5F7337 !important;
+    height: 3px !important;
+    border-radius: 3px !important;
+}}
+/* Fallback track selectors for Streamlit internal structure */
+[data-testid="stSlider"] > div > div > div > div {{
+    background-color: #DDD9D0 !important;
+    height: 3px !important;
+    border-radius: 3px !important;
+}}
 [data-testid="stSlider"] > div > div > div > div:first-child {{
-    background-color: #8B8A5A !important;
+    background-color: #5F7337 !important;
 }}
-/* Slider: thumb handle */
+
+/* Thumb handle — bronze/gold */
 [data-testid="stSlider"] [role="slider"] {{
-    background-color: #8B8A5A !important;
-    border-color: #8B8A5A !important;
+    background-color: #C8A24D !important;
+    border: 2px solid #B8922D !important;
+    border-radius: 50% !important;
+    width: 20px !important;
+    height: 20px !important;
+    box-shadow: 0 2px 8px rgba(200,162,77,0.40), 0 1px 3px rgba(43,43,40,0.14) !important;
+    transition: box-shadow 0.18s ease, transform 0.14s ease !important;
+    cursor: grab !important;
 }}
-/* Slider: thumb focus ring */
+[data-testid="stSlider"] [role="slider"]:hover {{
+    box-shadow: 0 4px 16px rgba(200,162,77,0.55), 0 1px 4px rgba(43,43,40,0.16) !important;
+    transform: scale(1.13) !important;
+}}
+[data-testid="stSlider"] [role="slider"]:active {{
+    cursor: grabbing !important;
+    transform: scale(1.07) !important;
+    box-shadow: 0 2px 10px rgba(200,162,77,0.48) !important;
+}}
 [data-testid="stSlider"] [role="slider"]:focus {{
-    box-shadow: 0 0 0 4px rgba(139,138,90,0.22) !important;
+    box-shadow: 0 0 0 5px rgba(200,162,77,0.20), 0 2px 8px rgba(200,162,77,0.40) !important;
     outline: none !important;
 }}
 
-/* Selectbox + input: focused border */
+/* Tick bar min / max labels — bronze, larger, semibold */
+[data-testid="stTickBarMin"],
+[data-testid="stTickBarMax"] {{
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    color: #C8A24D !important;
+    letter-spacing: 0.01em !important;
+}}
+
+/* Current value indicator above thumb */
+[data-testid="stSlider"] [data-baseweb="tooltip"] div,
+[data-testid="stSlider"] [data-baseweb="tooltip"] span {{
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    color: #C8A24D !important;
+    letter-spacing: 0.01em !important;
+}}
+
+/* Selectbox + input: focused border — olive */
 [data-baseweb="select"] > div:focus-within,
 [data-baseweb="select"]:focus-within > div {{
-    border-color: #8B8A5A !important;
-    box-shadow: 0 0 0 2px rgba(139,138,90,0.18) !important;
+    border-color: #5F7337 !important;
+    box-shadow: 0 0 0 2px rgba(95,115,55,0.16) !important;
 }}
 [data-baseweb="input"]:focus-within {{
-    border-color: #8B8A5A !important;
-    box-shadow: 0 0 0 2px rgba(139,138,90,0.18) !important;
+    border-color: #5F7337 !important;
+    box-shadow: 0 0 0 2px rgba(95,115,55,0.16) !important;
 }}
 
 /* Dropdown: hovered and selected option */
 [data-baseweb="menu"] [aria-selected="true"] {{
-    background-color: rgba(139,138,90,0.14) !important;
+    background-color: rgba(200,162,77,0.12) !important;
     color: {CHARCOAL} !important;
 }}
 [data-baseweb="menu"] li:hover {{
-    background-color: rgba(139,138,90,0.10) !important;
+    background-color: rgba(95,115,55,0.09) !important;
 }}
 
 /* Text selection highlight */
 ::selection {{
-    background: rgba(139,138,90,0.22);
+    background: rgba(200,162,77,0.20);
     color: {CHARCOAL};
 }}
 
-/* Streamlit progress / spinner accent */
-[data-testid="stStatusWidget"] svg,
-.stProgress > div > div {{
-    color: #8B8A5A !important;
-    background-color: #8B8A5A !important;
-}}
-
-/* Form submit button active/focus ring */
+/* Form submit button focus ring */
 .stFormSubmitButton > button:focus {{
-    box-shadow: 0 0 0 3px rgba(139,138,90,0.28) !important;
+    box-shadow: 0 0 0 3px rgba(95,115,55,0.26) !important;
     outline: none !important;
 }}
 </style>
