@@ -923,6 +923,11 @@ with tab_predict:
                 min_value=1872, max_value=2010,
                 value=int(defaults_df["Year Built"].iloc[0]),
             )
+            year_remod = st.slider(
+                "Year Remodeled / Added",
+                min_value=1950, max_value=2010,
+                value=1980, step=1,
+            )
 
         with right_col:
             _default_bath = (
@@ -961,7 +966,8 @@ with tab_predict:
         # --- raw feature overrides ---
         input_df["Overall Qual"] = float(overall_qual)
         input_df["Gr Liv Area"]  = float(gr_liv_area)
-        input_df["Year Built"]   = float(year_built)
+        input_df["Year Built"]      = float(year_built)
+        input_df["Year Remod/Add"]  = float(year_remod)
         input_df["Full Bath"]    = float(full_bath_val)
         input_df["Half Bath"]    = float(half_bath_val)
         input_df["Garage Cars"]  = float(garage_cars)
