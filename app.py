@@ -305,6 +305,14 @@ hr {{
     color: {OLIVE};
     font-weight: 700;
 }}
+
+/* ── Housing Insights tab — chart card effect ── */
+[data-testid="stImage"] {{
+    border: 1px solid #DDD9D0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(43,43,40,0.05);
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -379,11 +387,11 @@ with st.sidebar:
                       color:{SAGE}; text-transform:uppercase; margin-bottom:0.6rem;">
             Dataset at a glance
           </div>
-          <div style="font-size:0.85rem; color:{CHARCOAL}; line-height:1.75;">
-            <strong>2,930</strong> home sales<br>
-            <strong>2006 – 2010</strong> sale years<br>
-            <strong>80</strong> features per property<br>
-            Source: De Cock (2011), <em>Journal of Statistics Education</em>
+          <div style="font-size:0.85rem; color:{CHARCOAL}; line-height:2.0;">
+            <span style="color:{OLIVE}; font-weight:700; margin-right:0.45rem;">&#8962;</span><strong>2,930</strong> home sales<br>
+            <span style="color:{OLIVE}; font-weight:700; margin-right:0.45rem;">&#9675;</span><strong>2006 – 2010</strong> sale years<br>
+            <span style="color:{OLIVE}; font-weight:700; margin-right:0.45rem;">&#8801;</span><strong>80</strong> features per property<br>
+            <span style="color:{OLIVE}; font-weight:700; margin-right:0.45rem;">&#10022;</span>Source: De Cock (2011), <em>Journal of Statistics Education</em>
           </div>
         </div>
         """,
@@ -429,7 +437,7 @@ def _checklist_html(items):
 # ════════════════════════════════════════════════════════════════════════════
 # TABS
 # ════════════════════════════════════════════════════════════════════════════
-tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Price & Premium Home Prediction", "EDA", "Neighborhoods"])
+tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Price & Premium Home Prediction", "Housing Insights", "Neighborhoods"])
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 0 — HOME
@@ -1422,26 +1430,67 @@ with tab_eda:
     # ── Colour map shared by all charts ──────────────────────────────────────
     cmap = mcolors.LinearSegmentedColormap.from_list("oa", [SAGE, OLIVE])
 
-    st.markdown(
-        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
-        f"color:{SAGE}; text-transform:uppercase; margin-bottom:1.2rem;'>"
-        f"{_N_HOMES:,} HOMES &middot; AMES, IOWA &middot; 2006–2010</p>",
-        unsafe_allow_html=True,
-    )
-
-    def chart_caption(text: str):
+    # ── Layout helpers ────────────────────────────────────────────────────────
+    def _section_header(number, label, headline, intro):
         st.markdown(
-            f'<div style="font-size:0.88rem; color:{CHARCOAL}; line-height:1.7; '
-            f'text-align:justify; margin-top:0.6rem; margin-bottom:1.8rem;">'
-            f'{text}</div>',
+            f"<div style='margin:2.8rem 0 1.3rem 0;'>"
+            f"<p style='font-size:0.68rem; font-weight:700; letter-spacing:0.2em; "
+            f"color:{OLIVE}; text-transform:uppercase; margin:0 0 0.45rem 0;'>"
+            f"{number} &mdash; {label}</p>"
+            f"<h3 style='font-size:1.35rem; font-weight:800; color:{CHARCOAL}; "
+            f"letter-spacing:-0.02em; line-height:1.3; margin:0 0 0.55rem 0;'>"
+            f"{headline}</h3>"
+            f"<p style='font-size:0.9rem; color:{SAGE}; line-height:1.8; margin:0;'>"
+            f"{intro}</p>"
+            f"</div>",
             unsafe_allow_html=True,
         )
 
-    # ── Chart 1: Sale Price Distribution ─────────────────────────────────────
+    def _takeaway(text):
+        st.markdown(
+            f"<div style='background:{CREAM}; border:1px solid #DDD9D0; "
+            f"border-left:4px solid {OLIVE}; border-radius:0 8px 8px 0; "
+            f"padding:0.85rem 1.2rem; margin-top:0.9rem;'>"
+            f"<p style='font-size:0.65rem; font-weight:700; letter-spacing:0.16em; "
+            f"color:{SAGE}; text-transform:uppercase; margin:0 0 0.3rem 0;'>Key Insight</p>"
+            f"<p style='font-size:0.88rem; color:{CHARCOAL}; line-height:1.75; margin:0;'>"
+            f"{text}</p></div>",
+            unsafe_allow_html=True,
+        )
+
+    def _section_divider():
+        st.markdown(
+            f"<hr style='border:none; border-top:1px solid {SAGE}; "
+            f"opacity:0.2; margin:2.8rem 0 0 0;'>",
+            unsafe_allow_html=True,
+        )
+
+    # ── Page header ───────────────────────────────────────────────────────────
     st.markdown(
-        f"<p style='font-size:1.0rem; font-weight:700; color:{CHARCOAL}; margin-bottom:0.5rem;'>"
-        f"How are sale prices distributed?</p>",
+        f"<p style='font-size:0.68rem; font-weight:700; letter-spacing:0.18em; "
+        f"color:{SAGE}; text-transform:uppercase; margin-bottom:0.3rem;'>"
+        f"Ames, Iowa &middot; 2006–2010</p>"
+        f"<h2 style='font-size:1.7rem; font-weight:800; color:{CHARCOAL}; "
+        f"letter-spacing:-0.025em; line-height:1.2; margin:0 0 0.5rem 0;'>"
+        f"Housing Market Insights</h2>"
+        f"<p style='font-size:0.9rem; color:{SAGE}; line-height:1.75; margin:0;'>"
+        f"A data-driven look at {_N_HOMES:,} real home sales — exploring price "
+        f"patterns, neighborhood dynamics, quality effects, and the signals that "
+        f"separate premium properties from the rest of the market.</p>",
         unsafe_allow_html=True,
+    )
+    st.markdown(
+        f"<hr style='border:none; border-top:2px solid {SAGE}; opacity:0.3; margin:1.5rem 0 0 0;'>",
+        unsafe_allow_html=True,
+    )
+
+    # ── Section 01: Price Distribution ───────────────────────────────────────
+    _section_header(
+        "01", "PRICE DISTRIBUTION",
+        "How are Ames home prices distributed?",
+        "The Ames market covers an unusually wide range — from modest starter "
+        "homes under $40k to luxury estates above $600k. Understanding where "
+        "most transactions cluster helps calibrate any price estimate.",
     )
 
     fig, ax = plt.subplots(figsize=(14, 6))
@@ -1464,19 +1513,23 @@ with tab_eda:
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
-    chart_caption(
+    _takeaway(
         f"The median Ames home sold for <strong>${median_price:,.0f}</strong> — "
         f"well below the mean of <strong>${mean_price:,.0f}</strong>, pulled up by "
         f"a long tail of luxury sales. "
         f"The top 25% threshold used to define a Premium Home sits at "
         f"<strong>${_Q75_PRICE:,.0f}</strong>."
     )
+    _section_divider()
 
-    # ── Chart 2: Neighborhood Rankings ───────────────────────────────────────
-    st.markdown(
-        f"<p style='font-size:1.0rem; font-weight:700; color:{CHARCOAL}; margin-bottom:0.5rem;'>"
-        f"Which neighbourhoods command the highest prices?</p>",
-        unsafe_allow_html=True,
+    # ── Section 02: Neighborhood Performance ─────────────────────────────────
+    _section_header(
+        "02", "NEIGHBORHOOD PERFORMANCE",
+        "Which neighbourhoods command the highest prices?",
+        "Location is one of the most powerful — and hardest to change — "
+        "factors in property pricing. Ames has 24 distinct neighbourhoods "
+        "spanning three market tiers, with median prices varying by more "
+        f"than {price_ratio:.1f}× from top to bottom.",
     )
 
     nbhd_sorted = nbhd_med.sort_values(ascending=True)
@@ -1503,20 +1556,23 @@ with tab_eda:
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
-    chart_caption(
+    _takeaway(
         f"<strong>{richest_nbhd}</strong> commands the highest median price at "
         f"<strong>${nbhd_med[richest_nbhd]:,.0f}</strong> — "
-        f"<strong>{price_ratio:.1f}×</strong> more than the most affordable "
+        f"<strong>{price_ratio:.1f}&times;</strong> more than the most affordable "
         f"neighbourhood, <strong>{cheapest_nbhd}</strong> "
         f"(<strong>${nbhd_med[cheapest_nbhd]:,.0f}</strong>). "
         f"Location is one of the strongest predictors in both models."
     )
+    _section_divider()
 
-    # ── Chart 3: Quality vs Median Price ─────────────────────────────────────
-    st.markdown(
-        f"<p style='font-size:1.0rem; font-weight:700; color:{CHARCOAL}; margin-bottom:0.5rem;'>"
-        f"How much does build quality matter?</p>",
-        unsafe_allow_html=True,
+    # ── Section 03: Build Quality Impact ─────────────────────────────────────
+    _section_header(
+        "03", "BUILD QUALITY IMPACT",
+        "How much does build quality matter?",
+        "The dataset rates each home on an overall quality scale from 1 to 10. "
+        "This single appraisal score consistently proves to be one of the "
+        "most influential drivers of final sale price across the entire market.",
     )
 
     qual_vals   = qual_med.index.astype(int)
@@ -1543,19 +1599,23 @@ with tab_eda:
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
-    chart_caption(
+    _takeaway(
         f"Moving from quality rating 6 to 8 adds roughly "
         f"<strong>{price_jump * 100:.0f}%</strong> to the median price — "
         f"a gap that can exceed $60,000 on a single transaction. "
         f"Only <strong>{top_qual_pct:.1f}%</strong> of homes in the dataset achieved "
         f"a rating of 9 or 10, making top-tier construction genuinely rare."
     )
+    _section_divider()
 
-    # ── Chart 4: Living Area vs Sale Price (scatter) ──────────────────────────
-    st.markdown(
-        f"<p style='font-size:1.0rem; font-weight:700; color:{CHARCOAL}; margin-bottom:0.5rem;'>"
-        f"Does more space mean more money?</p>",
-        unsafe_allow_html=True,
+    # ── Section 04: Space vs Price ────────────────────────────────────────────
+    _section_header(
+        "04", "SPACE VS PRICE",
+        "Does more space mean more money?",
+        "Above-ground living area is among the most intuitive price signals. "
+        "But the relationship is not purely linear — quality amplifies the "
+        "effect of size, meaning a larger home of poor quality can still "
+        "underperform a smaller but impeccably finished property.",
     )
 
     fig, ax = plt.subplots(figsize=(14, 6))
@@ -1584,19 +1644,23 @@ with tab_eda:
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
-    chart_caption(
+    _takeaway(
         f"Living area correlates with price at <strong>r = {area_corr:.2f}</strong>, "
         f"but the colour overlay shows that two homes with identical square footage "
         f"can differ by tens of thousands of dollars based on build quality alone. "
-        f"This interaction is captured by the engineered Quality × Area feature, "
+        f"This interaction is captured by the engineered Quality &times; Area feature, "
         f"which is the single strongest predictor in both models."
     )
+    _section_divider()
 
-    # ── Chart 5: What drives premium-home classification? ────────────────────
-    st.markdown(
-        f"<p style='font-size:1.0rem; font-weight:700; color:{CHARCOAL}; margin-bottom:0.5rem;'>"
-        f"What makes a home 'premium'?</p>",
-        unsafe_allow_html=True,
+    # ── Section 05: Premium Home Signals ─────────────────────────────────────
+    _section_header(
+        "05", "PREMIUM HOME SIGNALS",
+        "What separates premium homes from the rest of the market?",
+        "The premium classifier identifies homes in the top 25% by sale price "
+        f"— those above <strong>${_Q75_PRICE:,.0f}</strong>. "
+        "Understanding which features drive that classification reveals what "
+        "truly defines high-value real estate in Ames.",
     )
 
     import re
@@ -1665,7 +1729,7 @@ with tab_eda:
     top1 = grouped_imp.index[-1]
     top1_pct = grouped_imp.values[-1] * 100
     top3_pct = grouped_imp.values[-3:].sum() * 100
-    chart_caption(
+    _takeaway(
         f"<strong>{top1}</strong> alone accounts for "
         f"<strong>{top1_pct:.0f}%</strong> of the classifier's decision weight — "
         f"it multiplies appraiser quality by total square footage, capturing both "
