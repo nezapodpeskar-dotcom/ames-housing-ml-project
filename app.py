@@ -244,21 +244,22 @@ html, body, .stApp, .stApp * {{
 
 /* ── Predict button ── */
 .stFormSubmitButton > button {{
-    background-color: {OLIVE} !important;
+    background-color: #4F5F34 !important;
     color: white !important;
-    border: 2px solid {OLIVE} !important;
+    border: 2px solid #4F5F34 !important;
     border-radius: 6px !important;
     font-family: 'Inter', sans-serif !important;
     font-size: 0.92rem !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     letter-spacing: 0.04em !important;
     padding: 0.6rem 1.5rem !important;
     width: 100% !important;
-    transition: all 0.18s ease;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
 }}
 .stFormSubmitButton > button:hover {{
-    background-color: transparent !important;
-    color: {OLIVE} !important;
+    background-color: #3C4828 !important;
+    border-color: #3C4828 !important;
+    color: white !important;
 }}
 
 /* ── Widget labels ── */
@@ -313,100 +314,100 @@ hr {{
     padding-bottom: 0.3rem !important;
 }}
 
-/* Track: full bar — light cream rail */
+/* Track: full bar — light neutral rail */
 [data-testid="stSlider"] [data-baseweb="slider"] > div > div:first-child {{
-    background-color: #DDD9D0 !important;
+    background-color: #E6E3D9 !important;
     height: 3px !important;
     border-radius: 3px !important;
 }}
-/* Track: active (filled) portion — olive */
+/* Track: active (filled) portion — deep olive */
 [data-testid="stSlider"] [data-baseweb="slider"] > div > div:first-child > div:first-child {{
-    background-color: #5F7337 !important;
+    background-color: #4F5F34 !important;
     height: 3px !important;
     border-radius: 3px !important;
 }}
 /* Fallback track selectors for Streamlit internal structure */
 [data-testid="stSlider"] > div > div > div > div {{
-    background-color: #DDD9D0 !important;
+    background-color: #E6E3D9 !important;
     height: 3px !important;
     border-radius: 3px !important;
 }}
 [data-testid="stSlider"] > div > div > div > div:first-child {{
-    background-color: #5F7337 !important;
+    background-color: #4F5F34 !important;
 }}
 
-/* Thumb handle — bronze/gold */
+/* Thumb handle — deep olive */
 [data-testid="stSlider"] [role="slider"] {{
-    background-color: #C8A24D !important;
-    border: 2px solid #B8922D !important;
+    background-color: #4F5F34 !important;
+    border: 2px solid #3C4828 !important;
     border-radius: 50% !important;
-    width: 20px !important;
-    height: 20px !important;
-    box-shadow: 0 2px 8px rgba(200,162,77,0.40), 0 1px 3px rgba(43,43,40,0.14) !important;
+    width: 18px !important;
+    height: 18px !important;
+    box-shadow: 0 1px 5px rgba(79,95,52,0.30), 0 1px 2px rgba(43,43,40,0.12) !important;
     transition: box-shadow 0.18s ease, transform 0.14s ease !important;
     cursor: grab !important;
 }}
 [data-testid="stSlider"] [role="slider"]:hover {{
-    box-shadow: 0 4px 16px rgba(200,162,77,0.55), 0 1px 4px rgba(43,43,40,0.16) !important;
-    transform: scale(1.13) !important;
+    box-shadow: 0 3px 12px rgba(79,95,52,0.40), 0 1px 3px rgba(43,43,40,0.14) !important;
+    transform: scale(1.10) !important;
 }}
 [data-testid="stSlider"] [role="slider"]:active {{
     cursor: grabbing !important;
-    transform: scale(1.07) !important;
-    box-shadow: 0 2px 10px rgba(200,162,77,0.48) !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 1px 6px rgba(79,95,52,0.35) !important;
 }}
 [data-testid="stSlider"] [role="slider"]:focus {{
-    box-shadow: 0 0 0 5px rgba(200,162,77,0.20), 0 2px 8px rgba(200,162,77,0.40) !important;
+    box-shadow: 0 0 0 4px rgba(79,95,52,0.18), 0 1px 5px rgba(79,95,52,0.30) !important;
     outline: none !important;
 }}
 
-/* Tick bar min / max labels — bronze, larger, semibold */
+/* Tick bar min / max labels — deep olive, semibold */
 [data-testid="stTickBarMin"],
 [data-testid="stTickBarMax"] {{
     font-size: 0.88rem !important;
     font-weight: 600 !important;
-    color: #C8A24D !important;
+    color: #4F5F34 !important;
     letter-spacing: 0.01em !important;
 }}
 
 /* Current value indicator above thumb */
 [data-testid="stSlider"] [data-baseweb="tooltip"] div,
 [data-testid="stSlider"] [data-baseweb="tooltip"] span {{
-    font-size: 0.9rem !important;
-    font-weight: 700 !important;
-    color: #C8A24D !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    color: #4F5F34 !important;
     letter-spacing: 0.01em !important;
 }}
 
-/* Selectbox + input: focused border — olive */
+/* Selectbox + input: focused border — deep olive */
 [data-baseweb="select"] > div:focus-within,
 [data-baseweb="select"]:focus-within > div {{
-    border-color: #5F7337 !important;
-    box-shadow: 0 0 0 2px rgba(95,115,55,0.16) !important;
+    border-color: #4F5F34 !important;
+    box-shadow: 0 0 0 2px rgba(79,95,52,0.15) !important;
 }}
 [data-baseweb="input"]:focus-within {{
-    border-color: #5F7337 !important;
-    box-shadow: 0 0 0 2px rgba(95,115,55,0.16) !important;
+    border-color: #4F5F34 !important;
+    box-shadow: 0 0 0 2px rgba(79,95,52,0.15) !important;
 }}
 
 /* Dropdown: hovered and selected option */
 [data-baseweb="menu"] [aria-selected="true"] {{
-    background-color: rgba(200,162,77,0.12) !important;
+    background-color: rgba(79,95,52,0.10) !important;
     color: {CHARCOAL} !important;
 }}
 [data-baseweb="menu"] li:hover {{
-    background-color: rgba(95,115,55,0.09) !important;
+    background-color: rgba(79,95,52,0.07) !important;
 }}
 
 /* Text selection highlight */
 ::selection {{
-    background: rgba(200,162,77,0.20);
+    background: rgba(79,95,52,0.18);
     color: {CHARCOAL};
 }}
 
 /* Form submit button focus ring */
 .stFormSubmitButton > button:focus {{
-    box-shadow: 0 0 0 3px rgba(95,115,55,0.26) !important;
+    box-shadow: 0 0 0 3px rgba(79,95,52,0.25) !important;
     outline: none !important;
 }}
 </style>
@@ -1053,7 +1054,7 @@ with tab_predict:
                 index=_full_names.index(NEIGHBORHOOD_NAMES[_default_code]),
             )
 
-        submitted = st.form_submit_button("Predict", use_container_width=True)
+        submitted = st.form_submit_button("Predict Home Price & Premium Home", use_container_width=True)
 
     # ── Prediction ───────────────────────────────────────────────────────────
     if submitted:
