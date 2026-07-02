@@ -1051,11 +1051,12 @@ def _predict_tab_body():
                 value=int(defaults_df["Gr Liv Area"].iloc[0]),
                 step=50,
             )
-            year_built = st.number_input(
+            _year_options = list(range(1872, 2011))
+            _default_year = int(defaults_df["Year Built"].iloc[0])
+            year_built = st.selectbox(
                 "Year Built",
-                min_value=1872, max_value=2010,
-                value=int(defaults_df["Year Built"].iloc[0]),
-                step=1,
+                options=_year_options,
+                index=_year_options.index(_default_year),
             )
 
         with right_col:
