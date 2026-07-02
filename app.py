@@ -970,20 +970,7 @@ if _page == "Home":
             unsafe_allow_html=True,
         )
 
-    st.markdown("<div style='margin-bottom:1.4rem;'></div>", unsafe_allow_html=True)
-
-    # ── CTA BUTTON ──────────────────────────────────────────────────────────
-    _cta_l, _cta_m, _cta_r = st.columns([1.5, 2, 1.5])
-    with _cta_m:
-        if st.button(
-            "Let's Predict Home Price & Premium Home",
-            key="home_cta_predict",
-            use_container_width=True,
-        ):
-            st.session_state["nav_radio"] = "Price & Premium Home Prediction"
-            st.rerun()
-
-    st.markdown("<div style='margin-bottom:1.4rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:2rem;'></div>", unsafe_allow_html=True)
 
     # ── CALL TO ACTION ──────────────────────────────────────────────────────
     st.markdown(
