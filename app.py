@@ -534,7 +534,7 @@ def _checklist_html(items):
 # ════════════════════════════════════════════════════════════════════════════
 # TABS
 # ════════════════════════════════════════════════════════════════════════════
-tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Price & Premium Home Prediction", "Housing Insights", "Neighborhoods"])
+tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Price & Premium Home Prediction", "Housing Insights", "Ames's Neighborhoods"])
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 0 — HOME
@@ -1923,68 +1923,148 @@ with tab_eda:
 # TAB 3 — NEIGHBORHOODS
 # ════════════════════════════════════════════════════════════════════════════
 
-_TIER_ORDER = ["Premium", "Mid-Range", "Budget"]
-
-_TIER_GROUPS = {
-    "Premium":   ["NridgHt", "NoRidge", "StoneBr", "Somerst", "Veenker"],
-    "Mid-Range": ["CollgCr", "Gilbert", "Crawfor", "Timber", "SawyerW",
-                  "Blmngtn", "ClearCr", "Mitchel"],
-    "Budget":    ["NAmes", "Edwards", "OldTown", "BrkSide", "IDOTRR",
-                  "MeadowV", "Sawyer", "SWISU", "BrDale", "NPkVill", "Blueste"],
+# Premium featured: code → (image path, mime type, tag list)
+_PREMIUM_FEATURED = {
+    "NridgHt": ("assets/northridge_heights.png", "image/png",
+                ["Executive suburb", "Large lots", "Top-tier value"]),
+    "NoRidge":  ("assets/noridge.jpeg",           "image/jpeg",
+                ["Luxury homes", "Strong resale", "Family-oriented"]),
+    "StoneBr":  ("assets/stonebrook.jpg",         "image/jpeg",
+                ["Highest median price", "Premium enclave", "Top-tier value"]),
 }
 
-_BADGE_STYLE = {
-    "Premium":   (OLIVE,  "white"),
-    "Mid-Range": (SAGE,   "white"),
-    "Budget":    (CREAM,  CHARCOAL),
-}
+def _load_nbhd_img(path: str) -> str:
+    try:
+        import base64 as _b64n
+        return _b64n.b64encode(open(path, "rb").read()).decode()
+    except FileNotFoundError:
+        return ""
 
-def _nbhd_card(code: str):
-    full_name, description, tier, _ = NEIGHBORHOOD_INFO[code]
-    badge_bg, badge_fg = _BADGE_STYLE[tier]
-    border = f"1px solid {SAGE}" if tier == "Budget" else "none"
-    with st.container(border=True):
-        st.markdown(
-            f"""
-            <div style="padding:0.25rem 0.1rem;">
-              <div style="display:flex; align-items:baseline; gap:0.55rem;
-                          margin-bottom:0.35rem;">
-                <span style="font-size:0.95rem; font-weight:700; color:{OLIVE};">
-                  {full_name}
-                </span>
-                <span style="font-size:0.72rem; color:#999; font-weight:500;">
-                  {code}
-                </span>
-              </div>
-              <span style="display:inline-block; background:{badge_bg};
-                           color:{badge_fg}; border-radius:10px;
-                           padding:0.12rem 0.65rem; font-size:0.68rem;
-                           font-weight:700; letter-spacing:0.07em;
-                           border:{border}; margin-bottom:0.45rem;">
-                {tier}
-              </span>
-              <div style="font-size:0.83rem; color:{CHARCOAL}; line-height:1.65;">
-                {description}
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+def _tag_pill(label: str) -> str:
+    return (
+        f"<span style='display:inline-block; background:rgba(91,107,58,0.09); "
+        f"color:{OLIVE}; border:1px solid rgba(91,107,58,0.22); border-radius:20px; "
+        f"padding:0.14rem 0.58rem; font-size:0.67rem; font-weight:600; "
+        f"letter-spacing:0.03em; margin-right:0.28rem; margin-bottom:0.28rem;'>{label}</span>"
+    )
+
+def _nbhd_section_header(label: str, subtitle: str) -> str:
+    return (
+        f"<div style='margin:2.4rem 0 1.3rem 0;'>"
+        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.18em; "
+        f"color:{OLIVE}; text-transform:uppercase; margin:0 0 0.3rem 0;'>{label}</p>"
+        f"<p style='font-size:1.15rem; font-weight:800; color:{CHARCOAL}; "
+        f"letter-spacing:-0.01em; margin:0 0 0.55rem 0; line-height:1.3;'>{subtitle}</p>"
+        f"<div style='width:2.6rem; height:2px; background:{OLIVE}; border-radius:2px;'></div>"
+        f"</div>"
+    )
+
+def _premium_photo_card(code: str) -> None:
+    full_name, description, _, median = NEIGHBORHOOD_INFO[code]
+    img_path, mime, tags = _PREMIUM_FEATURED[code]
+    b64 = _load_nbhd_img(img_path)
+    tags_html = "".join(_tag_pill(t) for t in tags)
+    img_block = (
+        f"<div style='flex:0 0 250px; overflow:hidden; border-right:1px solid #DDD9D0;'>"
+        f"<img src='data:{mime};base64,{b64}' "
+        f"style='width:250px; height:100%; min-height:195px; object-fit:cover; display:block;' />"
+        f"</div>"
+    ) if b64 else (
+        f"<div style='flex:0 0 6px; background:{OLIVE}; opacity:0.18;'></div>"
+    )
+    st.markdown(
+        f"<div style='background:{WHITE}; border:1px solid #DDD9D0; "
+        f"border-left:4px solid {OLIVE}; border-radius:0 14px 14px 0; "
+        f"overflow:hidden; margin-bottom:1.1rem;'>"
+        f"<div style='display:flex;'>"
+        f"{img_block}"
+        f"<div style='flex:1; padding:1.55rem 1.65rem;'>"
+        f"<span style='display:inline-block; background:{OLIVE}; color:white; "
+        f"border-radius:20px; padding:0.16rem 0.72rem; font-size:0.62rem; "
+        f"font-weight:700; letter-spacing:0.12em; text-transform:uppercase; "
+        f"margin-bottom:0.72rem;'>Premium Market</span>"
+        f"<div style='font-size:1.22rem; font-weight:800; color:{CHARCOAL}; "
+        f"letter-spacing:-0.015em; margin-bottom:0.52rem; line-height:1.2;'>{full_name}</div>"
+        f"<div style='margin-bottom:0.78rem;'>{tags_html}</div>"
+        f"<div style='font-size:0.84rem; color:#6A6A64; line-height:1.75; "
+        f"margin-bottom:0.85rem;'>{description}</div>"
+        f"<div style='font-size:0.78rem; font-weight:700; color:{OLIVE}; letter-spacing:0.01em;'>"
+        f"Median sale price &nbsp;&middot;&nbsp; "
+        f"<span style='font-size:1.0rem; font-weight:800;'>${median}k</span></div>"
+        f"</div></div></div>",
+        unsafe_allow_html=True,
+    )
+
+def _premium_compact_card(code: str) -> None:
+    full_name, description, _, median = NEIGHBORHOOD_INFO[code]
+    st.markdown(
+        f"<div style='background:{WHITE}; border:1px solid #DDD9D0; "
+        f"border-left:3px solid {OLIVE}; border-radius:0 10px 10px 0; "
+        f"padding:1.25rem 1.4rem; margin-bottom:0.75rem;'>"
+        f"<span style='display:inline-block; background:{OLIVE}; color:white; "
+        f"border-radius:20px; padding:0.11rem 0.62rem; font-size:0.62rem; "
+        f"font-weight:700; letter-spacing:0.1em; text-transform:uppercase; "
+        f"margin-bottom:0.48rem;'>Premium</span>"
+        f"<div style='font-size:1.0rem; font-weight:800; color:{CHARCOAL}; "
+        f"margin-bottom:0.4rem;'>{full_name}</div>"
+        f"<div style='font-size:0.81rem; color:#6A6A64; line-height:1.65; "
+        f"margin-bottom:0.55rem;'>{description}</div>"
+        f"<div style='font-size:0.76rem; font-weight:600; color:{OLIVE};'>"
+        f"Median &nbsp;${median}k</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+def _midrange_card(code: str) -> None:
+    full_name, description, _, median = NEIGHBORHOOD_INFO[code]
+    st.markdown(
+        f"<div style='background:{WHITE}; border:1px solid #DDD9D0; "
+        f"border-radius:10px; padding:1.15rem 1.25rem; margin-bottom:0.75rem;'>"
+        f"<span style='display:inline-block; background:{SAGE}; color:white; "
+        f"border-radius:20px; padding:0.11rem 0.62rem; font-size:0.62rem; "
+        f"font-weight:700; letter-spacing:0.1em; text-transform:uppercase; "
+        f"margin-bottom:0.45rem;'>Mid-Range</span>"
+        f"<div style='font-size:0.97rem; font-weight:700; color:{CHARCOAL}; "
+        f"margin-bottom:0.38rem;'>{full_name}</div>"
+        f"<div style='font-size:0.80rem; color:#777; line-height:1.65; "
+        f"margin-bottom:0.5rem;'>{description}</div>"
+        f"<div style='font-size:0.74rem; font-weight:600; color:{SAGE};'>"
+        f"Median &nbsp;${median}k</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+def _budget_card(code: str) -> None:
+    full_name, description, _, median = NEIGHBORHOOD_INFO[code]
+    st.markdown(
+        f"<div style='background:{CREAM}; border:1px solid #E0DDD6; "
+        f"border-radius:10px; padding:1.0rem 1.1rem; margin-bottom:0.65rem;'>"
+        f"<div style='font-size:0.91rem; font-weight:700; color:{CHARCOAL}; "
+        f"margin-bottom:0.32rem;'>{full_name}</div>"
+        f"<div style='font-size:0.77rem; color:#888; line-height:1.62; "
+        f"margin-bottom:0.42rem;'>{description}</div>"
+        f"<div style='font-size:0.72rem; font-weight:600; color:#9E9E95;'>"
+        f"Median &nbsp;${median}k</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
 with tab_nbhd:
+    # ── Page header ───────────────────────────────────────────────────────────
     st.markdown(
-        f"<h2 style='font-size:1.3rem; font-weight:800; color:{CHARCOAL}; "
-        f"margin-bottom:0.3rem;'>Ames Neighborhood Guide</h2>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        f"<p style='font-size:0.88rem; color:{SAGE}; margin-bottom:1.2rem;'>"
-        f"Browse all neighborhoods in the dataset — select one in the Predict "
-        f"tab to estimate its home value.</p>",
+        f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.22em; "
+        f"color:{OLIVE}; text-transform:uppercase; margin:0.3rem 0 0.4rem 0;'>"
+        f"Neighborhood Guide</p>"
+        f"<h2 style='font-size:1.9rem; font-weight:800; color:{CHARCOAL}; "
+        f"letter-spacing:-0.025em; line-height:1.2; margin:0 0 0.4rem 0;'>"
+        f"Ames's Neighborhoods</h2>"
+        f"<p style='font-size:0.88rem; color:{SAGE}; margin:0 0 1.5rem 0;'>"
+        f"Explore all residential districts — select one in the Predict tab "
+        f"to estimate home value.</p>",
         unsafe_allow_html=True,
     )
 
-    # ── Interactive map ───────────────────────────────────────────────────────
+    # ── Interactive map (UNCHANGED) ───────────────────────────────────────────
     _COORDS = {
         "NridgHt": (42.0525, -93.6553),
         "NoRidge":  (42.0500, -93.6600),
@@ -2013,9 +2093,9 @@ with tab_nbhd:
     }
 
     _MARKER_COLOR = {
-        "Premium":   "#3D4F27",   # dark olive — clearly distinct on light basemap
-        "Mid-Range": "#C4A35A",   # warm amber — visually separate from green tones
-        "Budget":    "#8B9E78",   # light sage-green — soft, readable against cream tiles
+        "Premium":   "#3D4F27",
+        "Mid-Range": "#C4A35A",
+        "Budget":    "#8B9E78",
     }
 
     m = folium.Map(
@@ -2072,32 +2152,46 @@ with tab_nbhd:
         unsafe_allow_html=True,
     )
 
-    for tier in _TIER_ORDER:
-        codes = _TIER_GROUPS[tier]
-        badge_bg, badge_fg = _BADGE_STYLE[tier]
-        border = f"1px solid {SAGE}" if tier == "Budget" else "none"
+    # ── PREMIUM MARKET ────────────────────────────────────────────────────────
+    st.markdown(
+        _nbhd_section_header("PREMIUM MARKET", "Ames' highest-value residential districts"),
+        unsafe_allow_html=True,
+    )
+    for _fc in ["NridgHt", "NoRidge", "StoneBr"]:
+        _premium_photo_card(_fc)
 
-        st.markdown(
-            f"""
-            <div style="display:inline-flex; align-items:center; gap:0.6rem;
-                        margin-bottom:0.8rem; margin-top:0.4rem;">
-              <span style="font-size:0.70rem; font-weight:700;
-                           letter-spacing:0.13em; color:{SAGE};
-                           text-transform:uppercase;">{tier}</span>
-              <span style="display:inline-block; width:2.5rem; height:2px;
-                           background:{SAGE}; border-radius:2px;"></span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    _pr_l, _pr_r = st.columns(2, gap="large")
+    with _pr_l:
+        _premium_compact_card("Somerst")
+    with _pr_r:
+        _premium_compact_card("Veenker")
 
-        # Two-column grid
-        pairs = [codes[i:i+2] for i in range(0, len(codes), 2)]
-        for pair in pairs:
-            cols = st.columns(2, gap="large")
-            for col, code in zip(cols, pair):
-                with col:
-                    _nbhd_card(code)
-            # If odd number, leave second column empty (already handled by zip)
+    # ── MID-RANGE COMMUNITIES ─────────────────────────────────────────────────
+    st.markdown(
+        _nbhd_section_header("MID-RANGE COMMUNITIES", "Balanced residential value and family appeal"),
+        unsafe_allow_html=True,
+    )
+    _mr_codes = ["CollgCr", "Gilbert", "Crawfor", "Timber",
+                 "SawyerW", "Blmngtn", "ClearCr", "Mitchel"]
+    for _i in range(0, len(_mr_codes), 2):
+        _pair = _mr_codes[_i:_i+2]
+        _cols = st.columns(2, gap="large")
+        for _col, _code in zip(_cols, _pair):
+            with _col:
+                _midrange_card(_code)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+    # ── ACCESSIBLE NEIGHBORHOODS ──────────────────────────────────────────────
+    st.markdown(
+        _nbhd_section_header("ACCESSIBLE NEIGHBORHOODS", "Entry-level and value-focused residential areas"),
+        unsafe_allow_html=True,
+    )
+    _bg_codes = ["NAmes", "Edwards", "OldTown", "BrkSide", "IDOTRR",
+                 "MeadowV", "Sawyer", "SWISU", "BrDale", "NPkVill", "Blueste"]
+    for _i in range(0, len(_bg_codes), 3):
+        _triple = _bg_codes[_i:_i+3]
+        _cols = st.columns(3, gap="medium")
+        for _col, _code in zip(_cols, _triple):
+            with _col:
+                _budget_card(_code)
+
+    st.markdown("<br>", unsafe_allow_html=True)
