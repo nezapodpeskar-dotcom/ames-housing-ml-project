@@ -10,3 +10,4 @@ openpyxl
 jupyter
 folium>=0.14
 streamlit-folium>=0.15
+xlrd>=2.0.1
