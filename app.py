@@ -1172,50 +1172,102 @@ def _predict_tab_body():
 
         _resale = "Strong" if _score >= 4 else ("Moderate" if _score >= 2 else "Limited")
 
-        # ── Reasoning bullets ─────────────────────────────────────────────────
+        # ── Data-driven reasoning bullets ────────────────────────────────────
+        # Each bullet is derived directly from the scoring component that was
+        # evaluated for this specific property — no static lookup tables.
         _is_premium = (premium_label == 1)
+        _abs_price_pct = abs(_price_diff_pct)
 
-        if _inv_level == "HIGH" and _is_premium:
-            _reasoning_bullets = [
-                "confirmed premium-market classification",
-                "strong neighborhood demand and location tier",
-                "above-average quality and living area",
-                "strong resale potential and high-value property profile",
-            ]
-        elif _inv_level == "HIGH" and not _is_premium:
-            _reasoning_bullets = [
-                "strong neighborhood and market positioning",
-                "above-average quality score and living area",
-                "price well above the Ames market average",
-                "solid resale indicators across multiple factors",
-            ]
-        elif _inv_level == "MEDIUM" and _is_premium:
-            _reasoning_bullets = [
-                "premium-market positioning with moderate investment balance",
-                "strong pricing level but mixed long-term indicators",
-                "above-average home characteristics confirmed by classifier",
-                "moderate resale stability relative to top-tier investment properties",
-            ]
-        elif _inv_level == "MEDIUM" and not _is_premium:
-            _reasoning_bullets = [
-                "balanced neighborhood positioning",
-                "moderate resale strength",
-                "average market pricing relative to Ames",
-                "solid property profile without premium-tier signals",
-            ]
-        elif _inv_level == "LOW" and _is_premium:
-            _reasoning_bullets = [
-                "premium-home characteristics present despite lower score",
-                "neighborhood or price factors temper overall investment rating",
-                "above-average home quality with limited market upside",
-                "investment signal mixed — premium quality, weaker market conditions",
-            ]
+        _reasoning_bullets = []
+
+        # 1. Overall quality (contributes up to 2 points: >=7 and >=9)
+        if overall_qual >= 9:
+            _reasoning_bullets.append(
+                f"excellent overall quality ({overall_qual}/10) — top-tier build standard, "
+                f"adds two points to investment score"
+            )
+        elif overall_qual >= 7:
+            _reasoning_bullets.append(
+                f"above-average overall quality ({overall_qual}/10) — supports price "
+                f"and resale potential"
+            )
         else:
-            _reasoning_bullets = [
-                "below-average price positioning relative to Ames market",
-                "weaker resale indicators across location and quality",
-                "limited investment signals at current market levels",
-            ]
+            _reasoning_bullets.append(
+                f"below-average overall quality ({overall_qual}/10) — limits premium "
+                f"potential and resale upside"
+            )
+
+        # 2. Living area vs Ames average (1 point if >= 1,500 sq ft)
+        if gr_liv_area >= _AMES_AVG_SF:
+            _reasoning_bullets.append(
+                f"above-average living area ({gr_liv_area:,} sq ft vs {_AMES_AVG_SF:,} "
+                f"Ames average) — positive size signal"
+            )
+        else:
+            _reasoning_bullets.append(
+                f"below-average living area ({gr_liv_area:,} sq ft vs {_AMES_AVG_SF:,} "
+                f"Ames average) — size does not support premium pricing"
+            )
+
+        # 3. XGBoost classifier output (1 point if premium)
+        if _is_premium:
+            _reasoning_bullets.append(
+                f"XGBoost classifier identifies this as a Premium Home "
+                f"({premium_proba * 100:.0f}% model confidence)"
+            )
+        else:
+            _reasoning_bullets.append(
+                f"XGBoost classifier does not identify this as a Premium Home "
+                f"({(1 - premium_proba) * 100:.0f}% confidence it is not premium)"
+            )
+
+        # 4. Predicted price vs Ames median $163,000 (1 point if above)
+        if _price_diff_pct > 0:
+            _reasoning_bullets.append(
+                f"predicted price ${predicted_price:,.0f} is {_abs_price_pct:.0f}% "
+                f"above the Ames median (${_AMES_MEDIAN:,})"
+            )
+        elif _price_diff_pct < 0:
+            _reasoning_bullets.append(
+                f"predicted price ${predicted_price:,.0f} is {_abs_price_pct:.0f}% "
+                f"below the Ames median (${_AMES_MEDIAN:,})"
+            )
+        else:
+            _reasoning_bullets.append(
+                f"predicted price ${predicted_price:,.0f} is at the Ames median "
+                f"(${_AMES_MEDIAN:,}) — neutral price signal"
+            )
+
+        # 5. Neighborhood tier (+1 Premium, −1 Budget, 0 Mid-Range)
+        if _nbhd_tier == "Premium":
+            _reasoning_bullets.append(
+                f"{neighborhood_full} is a Premium-tier neighborhood — "
+                f"strongest location signal, adds one point"
+            )
+        elif _nbhd_tier == "Budget":
+            _reasoning_bullets.append(
+                f"{neighborhood_full} is a Budget-tier neighborhood — "
+                f"location pulls investment score down by one point"
+            )
+        else:
+            _reasoning_bullets.append(
+                f"{neighborhood_full} is a Mid-Range neighborhood — "
+                f"neutral location signal, no points added or removed"
+            )
+
+        # 6. Explicit tension note when classifier and level contradict each other
+        if _is_premium and _inv_level == "LOW":
+            _reasoning_bullets.append(
+                "note: the model classifies this as a Premium Home, but the overall "
+                "investment score is LOW — neighborhood tier and/or price positioning "
+                "pull the score below threshold despite the premium classification"
+            )
+        elif not _is_premium and _inv_level == "HIGH":
+            _reasoning_bullets.append(
+                "note: HIGH investment score despite a non-premium classification — "
+                "strong quality, area, price, and/or neighborhood signals outweigh "
+                "the absence of a premium-home flag from the model"
+            )
 
         _reason_bullet_html = "".join(
             f"<div style='display:flex; align-items:flex-start; margin-bottom:0.35rem;'>"
@@ -1968,6 +2020,12 @@ _PREMIUM_FEATURED = {
                 ["Highest median price", "Premium enclave", "Top-tier value"]),
 }
 
+_BUDGET_FEATURED = {
+    "NAmes":   ("assets/north_ames.webp",    "image/webp"),
+    "Edwards": ("assets/edwards.webp",       "image/webp"),
+    "MeadowV": ("assets/meadow_village.jpg", "image/jpeg"),
+}
+
 def _load_nbhd_img(path: str) -> str:
     try:
         import base64 as _b64n
@@ -2081,6 +2139,38 @@ def _budget_card(code: str) -> None:
         f"<div style='font-size:0.72rem; font-weight:600; color:#9E9E95;'>"
         f"Median &nbsp;${median}k</div>"
         f"</div>",
+        unsafe_allow_html=True,
+    )
+
+def _budget_photo_card(code: str) -> None:
+    full_name, description, _, median = NEIGHBORHOOD_INFO[code]
+    img_path, mime = _BUDGET_FEATURED[code]
+    b64 = _load_nbhd_img(img_path)
+    img_block = (
+        f"<div style='height:138px; overflow:hidden; border-radius:10px 10px 0 0;'>"
+        f"<img src='data:{mime};base64,{b64}' "
+        f"style='width:100%; height:138px; object-fit:cover; display:block; "
+        f"opacity:0.90;' />"
+        f"</div>"
+    ) if b64 else ""
+    st.markdown(
+        f"<div style='background:{CREAM}; border:1px solid #DDD9D0; "
+        f"border-radius:10px; overflow:hidden; margin-bottom:0.8rem; "
+        f"box-shadow:0 1px 6px rgba(0,0,0,0.06);'>"
+        f"{img_block}"
+        f"<div style='padding:0.95rem 1.1rem 1.0rem 1.1rem;'>"
+        f"<span style='display:inline-block; background:rgba(139,158,120,0.18); "
+        f"color:#6A7E56; border:1px solid rgba(139,158,120,0.35); border-radius:20px; "
+        f"padding:0.11rem 0.58rem; font-size:0.60rem; font-weight:700; "
+        f"letter-spacing:0.10em; text-transform:uppercase; "
+        f"margin-bottom:0.42rem;'>Budget</span>"
+        f"<div style='font-size:0.97rem; font-weight:800; color:{CHARCOAL}; "
+        f"letter-spacing:-0.01em; margin-bottom:0.36rem; line-height:1.25;'>{full_name}</div>"
+        f"<div style='font-size:0.77rem; color:#888; line-height:1.62; "
+        f"margin-bottom:0.45rem;'>{description}</div>"
+        f"<div style='font-size:0.72rem; font-weight:600; color:#9E9E95;'>"
+        f"Median &nbsp;${median}k</div>"
+        f"</div></div>",
         unsafe_allow_html=True,
     )
 
@@ -2215,15 +2305,22 @@ with tab_nbhd:
             with _col:
                 _midrange_card(_code)
 
-    # ── ACCESSIBLE NEIGHBORHOODS ──────────────────────────────────────────────
+    # ── BUDGET NEIGHBORHOODS ──────────────────────────────────────────────────
     st.markdown(
         _nbhd_section_header("BUDGET NEIGHBORHOODS", "Entry-level and value-focused residential areas"),
         unsafe_allow_html=True,
     )
-    _bg_codes = ["NAmes", "Edwards", "OldTown", "BrkSide", "IDOTRR",
-                 "MeadowV", "Sawyer", "SWISU", "BrDale", "NPkVill", "Blueste"]
-    for _i in range(0, len(_bg_codes), 3):
-        _triple = _bg_codes[_i:_i+3]
+    # Featured three — compact editorial cards with photos
+    _bg_feat_cols = st.columns(3, gap="medium")
+    for _col, _code in zip(_bg_feat_cols, ["NAmes", "Edwards", "MeadowV"]):
+        with _col:
+            _budget_photo_card(_code)
+
+    # Remaining budget neighborhoods — plain compact cards
+    _bg_plain = ["OldTown", "BrkSide", "IDOTRR", "Sawyer", "SWISU",
+                 "BrDale", "NPkVill", "Blueste"]
+    for _i in range(0, len(_bg_plain), 3):
+        _triple = _bg_plain[_i:_i+3]
         _cols = st.columns(3, gap="medium")
         for _col, _code in zip(_cols, _triple):
             with _col:
