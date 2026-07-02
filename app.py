@@ -969,25 +969,39 @@ with tab_predict:
     _hero_l, _hero_r = st.columns([11, 9], gap="large")
 
     with _hero_l:
+        _hero_factors = [
+            ("Overall quality rating",
+             "Higher quality scores significantly increase home value and premium probability."),
+            ("Total living and basement area",
+             "Larger living spaces consistently drive higher home prices."),
+            ("Neighborhood tier",
+             "Homes in higher-tier neighborhoods tend to be more valuable."),
+            ("Year built",
+             "Newer homes generally have higher value and better premium potential."),
+        ]
+        _factors_html = "".join(
+            f"<div style='display:flex; align-items:flex-start; margin-bottom:1.1rem;'>"
+            f"<span style='color:{OLIVE}; font-weight:800; font-size:1.0rem; "
+            f"margin-right:0.65rem; flex-shrink:0; line-height:1.5;'>&#10003;</span>"
+            f"<div>"
+            f"<div style='font-size:0.93rem; font-weight:700; color:{CHARCOAL}; "
+            f"line-height:1.4; margin-bottom:0.18rem;'>{title}</div>"
+            f"<div style='font-size:0.82rem; font-weight:400; color:#888880; line-height:1.55;'>{desc}</div>"
+            f"</div>"
+            f"</div>"
+            for title, desc in _hero_factors
+        )
         st.markdown(
             f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.22em; "
             f"color:{OLIVE}; text-transform:uppercase; margin:0.5rem 0 0.7rem 0;'>"
             f"Predictive Analytics</p>"
             f"<h2 style='font-size:2.0rem; font-weight:800; color:{CHARCOAL}; "
-            f"letter-spacing:-0.025em; line-height:1.25; margin:0 0 1.1rem 0;'>"
+            f"letter-spacing:-0.025em; line-height:1.25; margin:0 0 1.4rem 0;'>"
             f"Precision Pricing for Ames Homes.<br>Stop Guessing. Start Predicting.</h2>"
-            f"<p style='font-size:1.0rem; font-weight:700; color:{OLIVE}; letter-spacing:0.06em; "
-            f"text-transform:uppercase; margin:0 0 0.7rem 0;'>"
-            f"Key Factors Influencing Price &amp; Premium Status:</p>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            _checklist_html([
-                "Overall quality rating",
-                "Total living and basement area",
-                "Neighborhood tier",
-                "Year built",
-            ]),
+            f"<p style='font-size:0.72rem; font-weight:700; color:{OLIVE}; letter-spacing:0.13em; "
+            f"text-transform:uppercase; margin:0 0 0.9rem 0;'>"
+            f"Key Factors Influencing Price &amp; Premium Status</p>"
+            f"{_factors_html}",
             unsafe_allow_html=True,
         )
 
