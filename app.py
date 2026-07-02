@@ -215,31 +215,56 @@ html, body, .stApp, .stApp * {{
     border-right: 1px solid {SAGE};
 }}
 
-/* ── Tab bar ── */
-.stTabs [data-baseweb="tab-list"] {{
-    gap: 0;
-    border-bottom: 2px solid {SAGE} !important;
-    background: transparent;
+/* ── Nav bar (st.radio styled as tabs) ── */
+div[data-testid="stRadio"] {{
+    border-bottom: 2px solid {SAGE};
+    margin-bottom: 1.2rem;
+    padding-bottom: 0;
 }}
-.stTabs [data-baseweb="tab"] {{
-    background: transparent;
+div[data-testid="stRadio"] [role="radiogroup"] {{
+    gap: 0 !important;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+}}
+div[data-testid="stRadio"] label {{
+    display: inline-flex !important;
+    background: transparent !important;
     border: none !important;
     border-bottom: 3px solid transparent !important;
-    color: {CHARCOAL};
-    font-size: 0.92rem;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    padding: 10px 28px;
-    margin-bottom: -2px;
-    border-radius: 0;
+    margin-bottom: -2px !important;
+    padding: 10px 28px !important;
+    cursor: pointer !important;
+    border-radius: 0 !important;
+    transition: color 0.15s ease, border-color 0.15s ease;
 }}
-.stTabs [data-baseweb="tab"][aria-selected="true"] {{
+div[data-testid="stRadio"] [data-baseweb="radio"] > div:first-child {{
+    display: none !important;
+}}
+div[data-testid="stRadio"] [data-baseweb="radio"] {{
+    display: flex;
+    align-items: center;
+    gap: 0;
+}}
+div[data-testid="stRadio"] [data-baseweb="radio"] p {{
+    color: {CHARCOAL} !important;
+    font-size: 0.92rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.02em !important;
+    margin: 0 !important;
+}}
+div[data-testid="stRadio"] label:has(input:checked) {{
     border-bottom: 3px solid {OLIVE} !important;
-    color: {OLIVE} !important;
-    font-weight: 700;
 }}
-.stTabs [data-baseweb="tab"]:hover {{
-    color: {OLIVE};
+div[data-testid="stRadio"] label:has(input:checked) p {{
+    color: {OLIVE} !important;
+    font-weight: 700 !important;
+}}
+div[data-testid="stRadio"] label:hover p {{
+    color: {OLIVE} !important;
+}}
+div[data-testid="stRadio"] label:hover {{
+    border-bottom: 3px solid {OLIVE} !important;
 }}
 
 /* ── Predict button ── */
@@ -551,33 +576,30 @@ def _checklist_html(items):
     return f"<div>{rows}</div>"
 
 # ════════════════════════════════════════════════════════════════════════════
-# TABS
+# NAVIGATION
 # ════════════════════════════════════════════════════════════════════════════
-# ── Tab-switch from Home CTA button ───────────────────────────────────────────
-if st.session_state.get("go_to_predict"):
-    st.session_state["go_to_predict"] = False
-    import streamlit.components.v1 as _stcv1
-    _stcv1.html(
-        """<script>
-        setTimeout(function() {
-            var tabs = parent.document.querySelectorAll('[data-baseweb="tab"]');
-            for (var i = 0; i < tabs.length; i++) {
-                if (tabs[i].innerText.trim().indexOf('Price') !== -1) {
-                    tabs[i].click();
-                    break;
-                }
-            }
-        }, 150);
-        </script>""",
-        height=0,
-    )
+_PAGES = [
+    "Home",
+    "Price & Premium Home Prediction",
+    "Ames's Neighborhoods",
+    "Market Housing Insights",
+]
 
-tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Price & Premium Home Prediction", "Housing Insights", "Ames's Neighborhoods"])
+if "nav_radio" not in st.session_state:
+    st.session_state["nav_radio"] = "Home"
+
+_page = st.radio(
+    "Navigation",
+    options=_PAGES,
+    horizontal=True,
+    label_visibility="collapsed",
+    key="nav_radio",
+)
 
 # ════════════════════════════════════════════════════════════════════════════
-# TAB 0 — HOME
+# PAGE — HOME
 # ════════════════════════════════════════════════════════════════════════════
-with tab_home:
+if _page == "Home":
 
     # ── HERO ────────────────────────────────────────────────────────────────
     _logo_path = "assets/logonoback.png"
@@ -958,7 +980,7 @@ with tab_home:
             key="home_cta_predict",
             use_container_width=True,
         ):
-            st.session_state["go_to_predict"] = True
+            st.session_state["nav_radio"] = "Price & Premium Home Prediction"
             st.rerun()
 
     st.markdown("<div style='margin-bottom:1.4rem;'></div>", unsafe_allow_html=True)
@@ -984,7 +1006,7 @@ with tab_home:
     )
 
 # ════════════════════════════════════════════════════════════════════════════
-# TAB 1 — PREDICT
+# PAGE — PREDICT
 # ════════════════════════════════════════════════════════════════════════════
 NEIGHBORHOOD_NAMES = {
     "NridgHt": "Northridge Heights",
@@ -1666,13 +1688,13 @@ def _predict_tab_body():
             unsafe_allow_html=True,
         )
 
-with tab_predict:
+if _page == "Price & Premium Home Prediction":
     _predict_tab_body()
 
 # ════════════════════════════════════════════════════════════════════════════
-# TAB 2 — EDA
+# PAGE — MARKET HOUSING INSIGHTS
 # ════════════════════════════════════════════════════════════════════════════
-with tab_eda:
+if _page == "Market Housing Insights":
     # ── Hardcoded summary statistics (no raw file dependency) ─────────────────
     _N_HOMES      = 2_930
     _MEDIAN_PRICE = 160_000.0
@@ -2058,7 +2080,7 @@ with tab_eda:
     )
 
 # ════════════════════════════════════════════════════════════════════════════
-# TAB 3 — NEIGHBORHOODS
+# PAGE — AMES'S NEIGHBORHOODS
 # ════════════════════════════════════════════════════════════════════════════
 
 # Premium featured: code → (image path, mime type, tag list)
@@ -2261,7 +2283,7 @@ def _budget_photo_card(code: str) -> None:
         unsafe_allow_html=True,
     )
 
-with tab_nbhd:
+if _page == "Ames's Neighborhoods":
     # ── Page header ───────────────────────────────────────────────────────────
     st.markdown(
         f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.22em; "
