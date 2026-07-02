@@ -2616,23 +2616,25 @@ with tab_buyer:
     _pref_l, _pref_r = st.columns(2, gap="large")
 
     with _pref_l:
-        _bm_budget = st.slider(
-            "Budget range", min_value=80_000, max_value=600_000,
-            value=(120_000, 350_000), step=10_000, format="$%d", key="bm_budget",
+        _bm_budget_str = st.selectbox(
+            "Budget range",
+            ["Under $120k", "$120k – $200k", "$200k – $300k",
+             "$300k – $400k", "$400k – $600k"],
+            index=1, key="bm_budget",
         )
-        _bm_space = st.select_slider(
+        _bm_space = st.selectbox(
             "Space priority",
-            options=["Compact", "Small", "Medium", "Spacious", "Large estate"],
-            value="Medium", key="bm_space",
+            ["Compact", "Small", "Medium", "Spacious", "Large estate"],
+            index=2, key="bm_space",
         )
         _bm_prem = st.radio(
             "Premium home interest", options=["Standard market", "Premium homes"],
             horizontal=True, key="bm_prem",
         )
-        _bm_gar = st.select_slider(
+        _bm_gar = st.selectbox(
             "Garage importance",
-            options=["Not important", "Minor", "Moderate", "Important", "Essential"],
-            value="Moderate", key="bm_gar",
+            ["Not important", "Minor", "Moderate", "Important", "Essential"],
+            index=2, key="bm_gar",
         )
 
     with _pref_r:
@@ -2648,12 +2650,26 @@ with tab_buyer:
         )
 
     # ── Score all neighbourhoods ─────────────────────────────────────────────
+    _budget_max_map = {
+        "Under $120k":    120_000,
+        "$120k – $200k":  200_000,
+        "$200k – $300k":  300_000,
+        "$300k – $400k":  400_000,
+        "$400k – $600k":  600_000,
+    }
+    _budget_lo_map = {
+        "Under $120k":    0,
+        "$120k – $200k":  120_000,
+        "$200k – $300k":  200_000,
+        "$300k – $400k":  300_000,
+        "$400k – $600k":  400_000,
+    }
     _space_val_map = {"Compact": 1, "Small": 2, "Medium": 3, "Spacious": 4, "Large estate": 5}
     _gar_val_map   = {"Not important": 1, "Minor": 2, "Moderate": 3, "Important": 4, "Essential": 5}
 
     _bm_prefs = {
         "buyer_type":        st.session_state["bm_buyer_type"],
-        "budget_max":        _bm_budget[1],
+        "budget_max":        _budget_max_map[_bm_budget_str],
         "space_priority":    _space_val_map[_bm_space],
         "premium_interest":  _bm_prem,
         "nbhd_pref":         _bm_nbhd,
@@ -2748,8 +2764,8 @@ with tab_buyer:
         for pt in _match_pts[:4]
     )
 
-    _bgt_lo = int(_bm_budget[0] / 1_000)
-    _bgt_hi = int(_bm_budget[1] / 1_000)
+    _bgt_lo = int(_budget_lo_map[_bm_budget_str] / 1_000)
+    _bgt_hi = int(_budget_max_map[_bm_budget_str] / 1_000)
 
     _res_l, _res_r = st.columns([5, 4], gap="large")
 
@@ -2862,7 +2878,7 @@ with tab_buyer:
     _budget_insight = (
         f"The median price in {_main_full} (${_main_med}k) sits within your budget ceiling "
         f"of ${_bgt_hi}k — room to negotiate or invest in improvements."
-        if _main_med * 1_000 <= _bm_budget[1] else
+        if _main_med * 1_000 <= _budget_max_map[_bm_budget_str] else
         f"The median price in {_main_full} (${_main_med}k) is slightly above your stated "
         f"budget — but the neighbourhood's profile closely matches your goals."
     )
