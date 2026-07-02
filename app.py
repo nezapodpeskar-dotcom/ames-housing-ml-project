@@ -2556,17 +2556,17 @@ with tab_buyer:
     )
 
     _PERSONAS = [
-        ("first_time", "🏠", "First-Time Buyer",
+        ("first_time", "", "First-Time Buyer",
          "Entering the market — focused on affordability and a safe, stable community."),
-        ("family",     "🏡", "Family Buyer",
+        ("family",     "", "Family Buyer",
          "Looking for space, safety, and long-term value in a welcoming neighbourhood."),
-        ("student",    "🎓", "Student / Young Professional",
+        ("student",    "", "Student / Young Professional",
          "Prioritising affordability, accessibility, and a vibrant urban feel."),
-        ("luxury",     "✦",  "Luxury Buyer",
+        ("luxury",     "", "Luxury Buyer",
          "Seeking the finest homes, premium locations, and top-tier specifications."),
-        ("investor",   "📈", "Real Estate Investor",
+        ("investor",   "", "Real Estate Investor",
          "Targeting value gaps, rental potential, and upside in underpriced districts."),
-        ("downsizer",  "🌿", "Downsizer / Retiree",
+        ("downsizer",  "", "Downsizer / Retiree",
          "Ready to simplify — quality, comfort, and low-maintenance living."),
     ]
 
@@ -2585,8 +2585,7 @@ with tab_buyer:
                 ) if _active else ""
                 st.markdown(
                     f"<div style='{_card_style}border-radius:12px;padding:1.35rem 1.25rem;"
-                    f"margin-bottom:0.35rem;min-height:148px;'>"
-                    f"<div style='font-size:1.45rem;margin-bottom:0.48rem;line-height:1;'>{_icon}</div>"
+                    f"margin-bottom:0.35rem;min-height:120px;'>"
                     f"<div style='font-size:0.97rem;font-weight:700;color:{CHARCOAL};"
                     f"margin-bottom:0.28rem;line-height:1.3;'>{_ptitle}</div>"
                     f"<div style='font-size:0.77rem;color:#888;line-height:1.62;'>{_pdesc}</div>"
