@@ -2567,23 +2567,29 @@ with tab_buyer:
 
     _PERSONAS = [
         ("first_time", "assets/buyer_first_time.png", "First-Time Buyer",
-         "Entering the market — focused on affordability and a safe, stable community."),
+         "Entering the market — focused on affordability and a safe, stable community.",
+         "center top"),
         ("family",     "assets/buyer_family.png",     "Family Buyer",
-         "Looking for space, safety, and long-term value in a welcoming neighbourhood."),
+         "Looking for space, safety, and long-term value in a welcoming neighbourhood.",
+         "center 10%"),
         ("student",    "assets/buyer_student.png",    "Student / Young Professional",
-         "Prioritising affordability, accessibility, and a vibrant urban feel."),
+         "Prioritising affordability, accessibility, and a vibrant urban feel.",
+         "center top"),
         ("luxury",     "assets/buyer_luxury.png",     "Luxury Buyer",
-         "Seeking the finest homes, premium locations, and top-tier specifications."),
+         "Seeking the finest homes, premium locations, and top-tier specifications.",
+         "center 5%"),
         ("investor",   "assets/buyer_investor.png",   "Real Estate Investor",
-         "Targeting value gaps, rental potential, and upside in underpriced districts."),
+         "Targeting value gaps, rental potential, and upside in underpriced districts.",
+         "center top"),
         ("downsizer",  "assets/buyer_downsizer.png",  "Downsizer / Retiree",
-         "Ready to simplify — quality, comfort, and low-maintenance living."),
+         "Ready to simplify — quality, comfort, and low-maintenance living.",
+         "center 10%"),
     ]
 
     # Preload all persona images as base64
     import base64 as _b64p
     _persona_imgs = {}
-    for _pcode, _pimg, _, _ in _PERSONAS:
+    for _pcode, _pimg, _, _, _ in _PERSONAS:
         try:
             _persona_imgs[_pcode] = _b64p.b64encode(open(_pimg, "rb").read()).decode()
         except FileNotFoundError:
@@ -2591,7 +2597,7 @@ with tab_buyer:
 
     for _row_start in range(0, 6, 3):
         _pcols = st.columns(3, gap="large")
-        for _col, (_pcode, _pimg, _ptitle, _pdesc) in zip(_pcols, _PERSONAS[_row_start:_row_start+3]):
+        for _col, (_pcode, _pimg, _ptitle, _pdesc, _obj_pos) in zip(_pcols, _PERSONAS[_row_start:_row_start+3]):
             with _col:
                 _active = st.session_state["bm_buyer_type"] == _pcode
                 _card_border = (
@@ -2606,7 +2612,8 @@ with tab_buyer:
                 _img_block = (
                     f"<div style='height:158px;overflow:hidden;'>"
                     f"<img src='data:image/png;base64,{_b64}' "
-                    f"style='width:100%;height:158px;object-fit:cover;display:block;opacity:0.92;'/>"
+                    f"style='width:100%;height:158px;object-fit:cover;"
+                    f"object-position:{_obj_pos};display:block;opacity:0.92;'/>"
                     f"</div>"
                 ) if _b64 else ""
                 st.markdown(
