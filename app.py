@@ -1225,6 +1225,9 @@ def _predict_tab_body():
             for b in _reasoning_bullets
         )
 
+        # 3.5 % fixed annual rate — long-run average U.S. home price appreciation
+        _projected_5yr = predicted_price * (1.035 ** 5)
+
         # ── Persist all display values across reruns ──────────────────────────
         st.session_state["predict_result"] = {
             "predicted_price":    predicted_price,
@@ -1237,6 +1240,7 @@ def _predict_tab_body():
             "nbhd_tier":          _nbhd_tier,
             "resale":             _resale,
             "reason_bullet_html": _reason_bullet_html,
+            "projected_5yr":      _projected_5yr,
         }
 
     # ── Display results from session state (stable across slider moves) ───────
@@ -1252,6 +1256,7 @@ def _predict_tab_body():
         _nbhd_tier          = _r["nbhd_tier"]
         _resale             = _r["resale"]
         _reason_bullet_html = _r["reason_bullet_html"]
+        _projected_5yr      = _r["projected_5yr"]
 
         st.markdown(
             f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
@@ -1364,17 +1369,17 @@ def _predict_tab_body():
             )
 
         with _ii_right:
-            _mp1, _mp2, _mp3 = st.columns(3, gap="medium")
+            _mp1, _mp2, _mp3, _mp4 = st.columns(4, gap="small")
             with _mp1:
                 st.markdown(
                     f"""
                     <div style='background:{WHITE}; border:1px solid #DDD9D0;
-                                border-radius:10px; padding:1.3rem 1.0rem; text-align:center;'>
-                      <div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em;
+                                border-radius:10px; padding:1.3rem 0.8rem; text-align:center;'>
+                      <div style='font-size:0.62rem; font-weight:700; letter-spacing:0.11em;
                                   color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
                         Price vs Ames Avg
                       </div>
-                      <div style='font-size:0.9rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
+                      <div style='font-size:0.85rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
                         {_price_vs_avg}
                       </div>
                     </div>
@@ -1385,12 +1390,12 @@ def _predict_tab_body():
                 st.markdown(
                     f"""
                     <div style='background:{WHITE}; border:1px solid #DDD9D0;
-                                border-radius:10px; padding:1.3rem 1.0rem; text-align:center;'>
-                      <div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em;
+                                border-radius:10px; padding:1.3rem 0.8rem; text-align:center;'>
+                      <div style='font-size:0.62rem; font-weight:700; letter-spacing:0.11em;
                                   color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
                         Neighborhood Tier
                       </div>
-                      <div style='font-size:0.9rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
+                      <div style='font-size:0.85rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
                         {_nbhd_tier}
                       </div>
                     </div>
@@ -1401,13 +1406,29 @@ def _predict_tab_body():
                 st.markdown(
                     f"""
                     <div style='background:{WHITE}; border:1px solid #DDD9D0;
-                                border-radius:10px; padding:1.3rem 1.0rem; text-align:center;'>
-                      <div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em;
+                                border-radius:10px; padding:1.3rem 0.8rem; text-align:center;'>
+                      <div style='font-size:0.62rem; font-weight:700; letter-spacing:0.11em;
                                   color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
                         Resale Strength
                       </div>
-                      <div style='font-size:0.9rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
+                      <div style='font-size:0.85rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
                         {_resale}
+                      </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            with _mp4:
+                st.markdown(
+                    f"""
+                    <div style='background:{WHITE}; border:1px solid #DDD9D0;
+                                border-radius:10px; padding:1.3rem 0.8rem; text-align:center;'>
+                      <div style='font-size:0.62rem; font-weight:700; letter-spacing:0.11em;
+                                  color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
+                        Projected 5-Year Value
+                      </div>
+                      <div style='font-size:0.85rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
+                        ${_projected_5yr:,.0f}
                       </div>
                     </div>
                     """,
@@ -1519,10 +1540,16 @@ def _predict_tab_body():
 
               <!-- ── disclaimer ── -->
               <p style='font-size:0.75rem; color:#AAA; line-height:1.6;
-                        font-style:italic; margin:0;'>
+                        font-style:italic; margin:0 0 0.5rem 0;'>
                 Investment Insights are explanatory business logic only and should not be
                 interpreted as financial advice or as a separately trained investment
                 prediction model.
+              </p>
+              <p style='font-size:0.75rem; color:#AAA; line-height:1.6;
+                        font-style:italic; margin:0;'>
+                5-year projection assumes a fixed 3.5% annual appreciation rate based on
+                long-run historical housing trends — it is a scenario estimate, not a
+                machine learning prediction.
               </p>
 
             </div>
