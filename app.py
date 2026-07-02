@@ -3009,8 +3009,9 @@ with tab_buyer:
         f"letter-spacing:0.12em;color:{SAGE};text-transform:uppercase;border-bottom:2px solid {SAGE};'>"
     )
     st.markdown(
+        f"<div style='overflow-x:auto;-webkit-overflow-scrolling:touch;'>"
         f"<div style='background:{WHITE};border:1px solid #DDD9D0;border-radius:10px;"
-        f"overflow:hidden;'>"
+        f"overflow:hidden;min-width:540px;'>"
         f"<table style='width:100%;border-collapse:collapse;'>"
         f"<thead><tr>"
         f"{_th}Neighbourhood</th>"
@@ -3021,7 +3022,7 @@ with tab_buyer:
         f"{_th}Match Score</th>"
         f"</tr></thead>"
         f"<tbody>{_tbl_rows_html}</tbody>"
-        f"</table></div>",
+        f"</table></div></div>",
         unsafe_allow_html=True,
     )
 
