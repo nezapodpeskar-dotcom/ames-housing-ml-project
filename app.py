@@ -529,10 +529,13 @@ hr {{
 
 /* ── Mobile responsiveness ── */
 @media (max-width: 768px) {{
-    [data-testid="column"] {{
+    [data-testid="stColumn"] {{
         width: 100% !important;
         flex: 1 1 100% !important;
         min-width: 100% !important;
+    }}
+    [data-testid="stHorizontalBlock"] {{
+        flex-wrap: wrap !important;
     }}
     .stButton > button {{
         font-size: 0.85rem !important;
@@ -1188,34 +1191,34 @@ def _predict_tab_body():
         left_col, right_col = st.columns(2, gap="large")
 
         with left_col:
-            overall_qual = st.slider(
-                "Overall Quality",
+            overall_qual = st.number_input(
+                "Overall Quality (1 = Very Poor, 10 = Excellent)",
                 min_value=1, max_value=10,
                 value=6,
                 step=1,
-                help="1 = Very Poor   10 = Excellent",
             )
-            gr_liv_area = st.slider(
+            gr_liv_area = st.number_input(
                 "Above-Ground Living Area (sq ft)",
                 min_value=334, max_value=5642,
                 value=1500,
                 step=50,
             )
-            year_built = st.slider(
+            _year_options = list(range(1872, 2011))
+            year_built = st.selectbox(
                 "Year Built",
-                min_value=1872, max_value=2010,
-                value=1990,
-                step=1,
+                options=_year_options,
+                index=_year_options.index(1990),
             )
 
         with right_col:
-            total_bath = st.slider(
+            total_bath = st.number_input(
                 "Total Bathrooms (full + 0.5 per half bath)",
                 min_value=1.0, max_value=6.0,
                 value=2.0,
                 step=0.5,
+                format="%.1f",
             )
-            garage_cars = st.slider(
+            garage_cars = st.number_input(
                 "Garage Capacity (cars)",
                 min_value=0, max_value=4,
                 value=2,
@@ -2210,7 +2213,7 @@ def _premium_photo_card(code: str) -> None:
     img_block = (
         f"<div style='flex:0 0 250px; overflow:hidden; border-right:1px solid #DDD9D0;'>"
         f"<img src='data:{mime};base64,{b64}' "
-        f"style='width:250px; height:100%; min-height:195px; object-fit:cover; display:block;' />"
+        f"style='width:100%; height:100%; min-height:195px; object-fit:cover; display:block;' />"
         f"</div>"
     ) if b64 else (
         f"<div style='flex:0 0 6px; background:{OLIVE}; opacity:0.18;'></div>"
@@ -2219,7 +2222,7 @@ def _premium_photo_card(code: str) -> None:
         f"<div style='background:{WHITE}; border:1px solid #DDD9D0; "
         f"border-left:4px solid {OLIVE}; border-radius:0 14px 14px 0; "
         f"overflow:hidden; margin-bottom:1.1rem;'>"
-        f"<div style='display:flex;'>"
+        f"<div style='display:flex; flex-wrap:wrap;'>"
         f"{img_block}"
         f"<div style='flex:1; padding:1.55rem 1.65rem;'>"
         f"<span style='display:inline-block; background:{OLIVE}; color:white; "
