@@ -1045,7 +1045,7 @@ def _predict_tab_body():
                 value=int(defaults_df["Overall Qual"].iloc[0]),
                 help="1 = Very Poor   10 = Excellent",
             )
-            gr_liv_area = st.slider(
+            gr_liv_area = st.number_input(
                 "Above-Ground Living Area (sq ft)",
                 min_value=300, max_value=5_000,
                 value=int(defaults_df["Gr Liv Area"].iloc[0]),
