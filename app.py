@@ -516,6 +516,16 @@ hr {{
     box-shadow: 0 0 0 3px rgba(79,95,52,0.25) !important;
     outline: none !important;
 }}
+
+/* ── Buyer Match persona cards ── */
+.bm-persona-card {{
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}}
+.bm-persona-card:hover {{
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(79,95,52,0.13) !important;
+    border-color: {OLIVE} !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -2556,40 +2566,59 @@ with tab_buyer:
     )
 
     _PERSONAS = [
-        ("first_time", "", "First-Time Buyer",
+        ("first_time", "assets/buyer_first_time.png", "First-Time Buyer",
          "Entering the market — focused on affordability and a safe, stable community."),
-        ("family",     "", "Family Buyer",
+        ("family",     "assets/buyer_family.png",     "Family Buyer",
          "Looking for space, safety, and long-term value in a welcoming neighbourhood."),
-        ("student",    "", "Student / Young Professional",
+        ("student",    "assets/buyer_student.png",    "Student / Young Professional",
          "Prioritising affordability, accessibility, and a vibrant urban feel."),
-        ("luxury",     "", "Luxury Buyer",
+        ("luxury",     "assets/buyer_luxury.png",     "Luxury Buyer",
          "Seeking the finest homes, premium locations, and top-tier specifications."),
-        ("investor",   "", "Real Estate Investor",
+        ("investor",   "assets/buyer_investor.png",   "Real Estate Investor",
          "Targeting value gaps, rental potential, and upside in underpriced districts."),
-        ("downsizer",  "", "Downsizer / Retiree",
+        ("downsizer",  "assets/buyer_downsizer.png",  "Downsizer / Retiree",
          "Ready to simplify — quality, comfort, and low-maintenance living."),
     ]
 
+    # Preload all persona images as base64
+    import base64 as _b64p
+    _persona_imgs = {}
+    for _pcode, _pimg, _, _ in _PERSONAS:
+        try:
+            _persona_imgs[_pcode] = _b64p.b64encode(open(_pimg, "rb").read()).decode()
+        except FileNotFoundError:
+            _persona_imgs[_pcode] = ""
+
     for _row_start in range(0, 6, 3):
         _pcols = st.columns(3, gap="large")
-        for _col, (_pcode, _icon, _ptitle, _pdesc) in zip(_pcols, _PERSONAS[_row_start:_row_start+3]):
+        for _col, (_pcode, _pimg, _ptitle, _pdesc) in zip(_pcols, _PERSONAS[_row_start:_row_start+3]):
             with _col:
                 _active = st.session_state["bm_buyer_type"] == _pcode
-                _card_style = (
-                    f"border:2px solid {OLIVE};box-shadow:0 0 0 3px rgba(79,95,52,0.10);"
+                _card_border = (
+                    f"border:2px solid {OLIVE};box-shadow:0 0 0 4px rgba(79,95,52,0.10);"
                     f"background:rgba(79,95,52,0.05);"
-                ) if _active else f"border:1px solid #DDD9D0;background:{WHITE};"
+                ) if _active else "border:1px solid #DDD9D0;background:#FFFFFF;"
                 _badge = (
-                    f"<div style='margin-top:0.8rem;font-size:0.66rem;font-weight:700;"
+                    f"<div style='margin-top:0.75rem;font-size:0.66rem;font-weight:700;"
                     f"color:{OLIVE};letter-spacing:0.1em;text-transform:uppercase;'>✓ Selected</div>"
                 ) if _active else ""
+                _b64 = _persona_imgs.get(_pcode, "")
+                _img_block = (
+                    f"<div style='height:158px;overflow:hidden;'>"
+                    f"<img src='data:image/png;base64,{_b64}' "
+                    f"style='width:100%;height:158px;object-fit:cover;display:block;opacity:0.92;'/>"
+                    f"</div>"
+                ) if _b64 else ""
                 st.markdown(
-                    f"<div style='{_card_style}border-radius:12px;padding:1.35rem 1.25rem;"
-                    f"margin-bottom:0.35rem;min-height:120px;'>"
+                    f"<div class='bm-persona-card' style='{_card_border}"
+                    f"border-radius:16px;overflow:hidden;margin-bottom:0.35rem;'>"
+                    f"{_img_block}"
+                    f"<div style='padding:1.1rem 1.2rem 1.25rem 1.2rem;'>"
                     f"<div style='font-size:0.97rem;font-weight:700;color:{CHARCOAL};"
                     f"margin-bottom:0.28rem;line-height:1.3;'>{_ptitle}</div>"
                     f"<div style='font-size:0.77rem;color:#888;line-height:1.62;'>{_pdesc}</div>"
-                    f"{_badge}</div>",
+                    f"{_badge}"
+                    f"</div></div>",
                     unsafe_allow_html=True,
                 )
                 if not _active:
