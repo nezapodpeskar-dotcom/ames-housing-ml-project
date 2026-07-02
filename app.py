@@ -2527,7 +2527,7 @@ with tab_buyer:
     with _bh_r:
         try:
             import base64 as _b64bm
-            _bh_b64 = _b64bm.b64encode(open("assets/house.png", "rb").read()).decode()
+            _bh_b64 = _b64bm.b64encode(open("assets/cosy_house.png", "rb").read()).decode()
             st.markdown(
                 f"<div style='display:flex;align-items:center;justify-content:center;"
                 f"height:100%;padding-top:0.5rem;'>"
