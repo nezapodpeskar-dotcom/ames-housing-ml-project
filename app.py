@@ -2182,7 +2182,7 @@ with tab_nbhd:
 
     # ── ACCESSIBLE NEIGHBORHOODS ──────────────────────────────────────────────
     st.markdown(
-        _nbhd_section_header("ACCESSIBLE NEIGHBORHOODS", "Entry-level and value-focused residential areas"),
+        _nbhd_section_header("BUDGET NEIGHBORHOODS", "Entry-level and value-focused residential areas"),
         unsafe_allow_html=True,
     )
     _bg_codes = ["NAmes", "Edwards", "OldTown", "BrkSide", "IDOTRR",
