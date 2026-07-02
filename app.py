@@ -985,15 +985,6 @@ _NAME_TO_CODE = {v: k for k, v in NEIGHBORHOOD_NAMES.items()}
 
 @st.fragment
 def _predict_tab_body():
-    # ── TAB HEADER BANNER ───────────────────────────────────────────────────
-    st.markdown(
-        f"<div style='background:#4F5F34; color:white; font-family:Inter,sans-serif; "
-        f"font-size:0.92rem; font-weight:700; letter-spacing:0.04em; "
-        f"padding:0.6rem 1.5rem; border-radius:6px; margin-bottom:1.5rem;'>"
-        f"Let's Predict Home Price &amp; Premium Home</div>",
-        unsafe_allow_html=True,
-    )
-
     # ── HERO: two-column layout ─────────────────────────────────────────────
     _hero_l, _hero_r = st.columns([11, 9], gap="large")
 
@@ -1114,7 +1105,7 @@ def _predict_tab_body():
                 index=_full_names.index(NEIGHBORHOOD_NAMES[_default_code]),
             )
 
-        submitted = st.form_submit_button("Predict Home Price & Premium Home", use_container_width=True)
+        submitted = st.form_submit_button("Let's Predict Home Price & Premium Home", use_container_width=True)
 
     # ── Prediction (calculation only — runs on button click) ─────────────────
     if submitted:
