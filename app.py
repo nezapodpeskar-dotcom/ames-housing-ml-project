@@ -1051,10 +1051,11 @@ def _predict_tab_body():
                 value=int(defaults_df["Gr Liv Area"].iloc[0]),
                 step=50,
             )
-            year_built = st.slider(
+            year_built = st.number_input(
                 "Year Built",
                 min_value=1872, max_value=2010,
                 value=int(defaults_df["Year Built"].iloc[0]),
+                step=1,
             )
 
         with right_col:
