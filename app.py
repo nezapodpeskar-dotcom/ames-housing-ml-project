@@ -1369,17 +1369,17 @@ def _predict_tab_body():
             )
 
         with _ii_right:
-            _mp1, _mp2, _mp3, _mp4 = st.columns(4, gap="small")
+            _mp1, _mp2, _mp3 = st.columns(3, gap="medium")
             with _mp1:
                 st.markdown(
                     f"""
                     <div style='background:{WHITE}; border:1px solid #DDD9D0;
-                                border-radius:10px; padding:1.3rem 0.8rem; text-align:center;'>
-                      <div style='font-size:0.62rem; font-weight:700; letter-spacing:0.11em;
+                                border-radius:10px; padding:1.3rem 1.0rem; text-align:center;'>
+                      <div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em;
                                   color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
                         Price vs Ames Avg
                       </div>
-                      <div style='font-size:0.85rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
+                      <div style='font-size:0.9rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
                         {_price_vs_avg}
                       </div>
                     </div>
@@ -1390,12 +1390,12 @@ def _predict_tab_body():
                 st.markdown(
                     f"""
                     <div style='background:{WHITE}; border:1px solid #DDD9D0;
-                                border-radius:10px; padding:1.3rem 0.8rem; text-align:center;'>
-                      <div style='font-size:0.62rem; font-weight:700; letter-spacing:0.11em;
+                                border-radius:10px; padding:1.3rem 1.0rem; text-align:center;'>
+                      <div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em;
                                   color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
                         Neighborhood Tier
                       </div>
-                      <div style='font-size:0.85rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
+                      <div style='font-size:0.9rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
                         {_nbhd_tier}
                       </div>
                     </div>
@@ -1406,34 +1406,40 @@ def _predict_tab_body():
                 st.markdown(
                     f"""
                     <div style='background:{WHITE}; border:1px solid #DDD9D0;
-                                border-radius:10px; padding:1.3rem 0.8rem; text-align:center;'>
-                      <div style='font-size:0.62rem; font-weight:700; letter-spacing:0.11em;
+                                border-radius:10px; padding:1.3rem 1.0rem; text-align:center;'>
+                      <div style='font-size:0.65rem; font-weight:700; letter-spacing:0.12em;
                                   color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
                         Resale Strength
                       </div>
-                      <div style='font-size:0.85rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
+                      <div style='font-size:0.9rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
                         {_resale}
                       </div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
-            with _mp4:
-                st.markdown(
-                    f"""
-                    <div style='background:{WHITE}; border:1px solid #DDD9D0;
-                                border-radius:10px; padding:1.3rem 0.8rem; text-align:center;'>
-                      <div style='font-size:0.62rem; font-weight:700; letter-spacing:0.11em;
-                                  color:{SAGE}; text-transform:uppercase; margin-bottom:0.5rem;'>
-                        Projected 5-Year Value
-                      </div>
-                      <div style='font-size:0.85rem; font-weight:700; color:{CHARCOAL}; line-height:1.35;'>
-                        ${_projected_5yr:,.0f}
-                      </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+            st.markdown(
+                f"""
+                <div style='background:{WHITE}; border:1px solid #DDD9D0;
+                            border-top:3px solid {OLIVE};
+                            border-radius:0 0 12px 12px;
+                            padding:1.6rem 1.4rem; text-align:center;
+                            margin-top:0.65rem;'>
+                  <div style='font-size:0.65rem; font-weight:700; letter-spacing:0.13em;
+                              color:{SAGE}; text-transform:uppercase; margin-bottom:0.55rem;'>
+                    Projected 5-Year Value
+                  </div>
+                  <div style='font-size:2.0rem; font-weight:800; color:{OLIVE};
+                              letter-spacing:-0.02em; line-height:1.1;'>
+                    ${_projected_5yr:,.0f}
+                  </div>
+                  <div style='font-size:0.72rem; color:#AAA; margin-top:0.45rem; font-weight:500;'>
+                    @ 3.5% annual appreciation &middot; 5 years
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
         st.markdown(
             f"""
