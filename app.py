@@ -182,6 +182,93 @@ NEIGHBORHOOD_INFO = {
     ),
 }
 
+# ── Buyer Match: extended neighbourhood attributes ────────────────────────────
+# (prem_pct, avg_qual, avg_sf, avg_year_built, garage_cars, [lifestyle_tags])
+_BM_NBHD = {
+    "NridgHt": (65, 8.5, 2100, 2002, 2.5, ["luxury", "family-oriented", "quiet"]),
+    "StoneBr":  (72, 8.3, 1800, 1997, 2.2, ["luxury", "quiet"]),
+    "NoRidge":  (60, 8.1, 2150, 1994, 2.4, ["luxury", "family-oriented", "quiet"]),
+    "Somerst":  (45, 7.8, 1700, 2004, 2.0, ["family-oriented", "quiet"]),
+    "Veenker":  (35, 7.2, 1600, 1985, 1.8, ["quiet", "walkable"]),
+    "CollgCr":  (28, 7.0, 1620, 1995, 1.9, ["family-oriented", "walkable"]),
+    "Gilbert":  (22, 6.8, 1650, 1996, 2.0, ["family-oriented", "quiet"]),
+    "Crawfor":  (25, 6.7, 1490, 1948, 1.6, ["walkable", "quiet"]),
+    "Timber":   (20, 6.9, 1800, 1999, 2.1, ["quiet", "family-oriented"]),
+    "Blmngtn":  (18, 6.6, 1500, 1994, 1.9, ["quiet"]),
+    "ClearCr":  (15, 6.5, 1490, 1979, 1.7, ["quiet"]),
+    "SawyerW":  (20, 6.8, 1560, 2001, 1.9, ["family-oriented", "quiet"]),
+    "Mitchel":  (10, 6.2, 1490, 1975, 1.7, ["quiet"]),
+    "SWISU":    ( 8, 6.0, 1200, 1963, 1.2, ["student-friendly", "walkable"]),
+    "NPkVill":  ( 5, 5.8, 1100, 1985, 1.5, ["quiet"]),
+    "Blueste":  ( 5, 6.0, 1200, 1977, 1.5, ["quiet"]),
+    "Sawyer":   ( 8, 5.8, 1200, 1975, 1.5, ["investment"]),
+    "NAmes":    (10, 6.2, 1400, 1960, 1.7, ["investment", "family-oriented"]),
+    "Edwards":  ( 8, 6.0, 1200, 1965, 1.5, ["investment", "walkable"]),
+    "OldTown":  (10, 5.8, 1280, 1930, 1.2, ["walkable", "student-friendly"]),
+    "BrkSide":  ( 8, 6.0, 1200, 1940, 1.3, ["investment"]),
+    "BrDale":   ( 5, 5.5, 1100, 1975, 1.4, ["investment"]),
+    "IDOTRR":   ( 5, 5.5, 1080, 1940, 1.0, ["investment"]),
+    "MeadowV":  ( 5, 5.2,  900, 1970, 1.1, ["investment", "student-friendly"]),
+}
+
+def _bm_score(code, prefs):
+    info = NEIGHBORHOOD_INFO[code]
+    median_k, tier = info[3], info[2]
+    d = _BM_NBHD[code]
+    prem_pct, avg_sf, avg_year, garage, tags = d[0], d[2], d[3], d[4], d[5]
+    pts = 0.0
+
+    # Budget fit (0–30): reward median close to and within budget ceiling
+    bmax_k = prefs["budget_max"] / 1_000
+    if median_k <= bmax_k:
+        pts += 15 + 15 * (median_k / bmax_k)
+    else:
+        pts += max(0, 15 - 30 * ((median_k - bmax_k) / max(bmax_k, 1)))
+
+    # Buyer type × tier alignment (0–25)
+    _tier_pts = {
+        "first_time": {"Premium": 5,  "Mid-Range": 18, "Budget": 25},
+        "family":     {"Premium": 22, "Mid-Range": 25, "Budget": 10},
+        "student":    {"Premium": 0,  "Mid-Range": 12, "Budget": 25},
+        "luxury":     {"Premium": 25, "Mid-Range": 10, "Budget": 0},
+        "investor":   {"Premium": 5,  "Mid-Range": 18, "Budget": 25},
+        "downsizer":  {"Premium": 18, "Mid-Range": 25, "Budget": 12},
+    }
+    pts += _tier_pts.get(prefs["buyer_type"], {}).get(tier, 0)
+
+    # Space priority (0–15)
+    sf_norm = min(1.0, max(0.0, (avg_sf - 900) / 1_400))
+    sp_norm = (prefs["space_priority"] - 1) / 4
+    pts += 15 * (1 - abs(sf_norm - sp_norm))
+
+    # Premium interest (0–15)
+    p_norm = min(1.0, prem_pct / 75)
+    pts += 15 * p_norm if prefs["premium_interest"] == "Premium homes" else 15 * (1 - p_norm)
+
+    # Lifestyle tag match (0–10)
+    _tag_map = {
+        "Quiet": "quiet", "Walkable": "walkable",
+        "Student-friendly": "student-friendly", "Family-oriented": "family-oriented",
+        "High-end luxury": "luxury", "Investment potential": "investment",
+    }
+    if _tag_map.get(prefs["nbhd_pref"], "") in tags:
+        pts += 10
+
+    # Garage importance (0–10)
+    g_norm  = min(1.0, max(0.0, (garage - 1.0) / 1.5))
+    gi_norm = (prefs["garage_imp"] - 1) / 4
+    pts += 10 * (1 - abs(g_norm - gi_norm))
+
+    # Construction preference (0–5)
+    if prefs["construction_pref"] == "Newer homes":
+        pts += 5 * max(0.0, (avg_year - 1960) / 50)
+    elif prefs["construction_pref"] == "Older charm":
+        pts += 5 * max(0.0, (2000 - avg_year) / 70)
+    else:
+        pts += 3
+
+    return min(98, max(42, int(pts / 110 * 100)))
+
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Ames Housing Predictor",
@@ -262,23 +349,23 @@ html, body, .stApp, .stApp * {{
     color: white !important;
 }}
 
-/* ── Home CTA button (st.button, not form submit) ── */
+/* ── Persona select buttons (Buyer Match tab) ── */
 .stButton > button {{
-    background-color: #4F5F34 !important;
-    color: white !important;
-    border: 2px solid #4F5F34 !important;
+    background: transparent !important;
+    color: {OLIVE} !important;
+    border: 1.5px solid {OLIVE} !important;
     border-radius: 6px !important;
     font-family: 'Inter', sans-serif !important;
-    font-size: 0.92rem !important;
-    font-weight: 700 !important;
+    font-size: 0.80rem !important;
+    font-weight: 600 !important;
     letter-spacing: 0.04em !important;
-    padding: 0.6rem 1.5rem !important;
-    transition: background-color 0.18s ease, border-color 0.18s ease;
+    padding: 0.35rem 0.8rem !important;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }}
 .stButton > button:hover {{
-    background-color: #3C4828 !important;
-    border-color: #3C4828 !important;
+    background-color: {OLIVE} !important;
     color: white !important;
+    border-color: {OLIVE} !important;
 }}
 
 /* ── Widget labels ── */
@@ -553,10 +640,11 @@ def _checklist_html(items):
 # ════════════════════════════════════════════════════════════════════════════
 # TABS
 # ════════════════════════════════════════════════════════════════════════════
-tab_home, tab_predict, tab_nbhd, tab_eda = st.tabs([
+tab_home, tab_predict, tab_nbhd, tab_buyer, tab_eda = st.tabs([
     "Home",
     "Price & Premium Home Prediction",
     "Ames's Neighborhoods",
+    "Ideal Buyer Match",
     "Market Housing Insights",
 ])
 
@@ -2391,5 +2479,478 @@ with tab_nbhd:
         for _col, _code in zip(_cols, _triple):
             with _col:
                 _budget_card(_code)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 4 — IDEAL BUYER MATCH
+# ════════════════════════════════════════════════════════════════════════════
+with tab_buyer:
+
+    # ── Session state defaults ───────────────────────────────────────────────
+    if "bm_buyer_type" not in st.session_state:
+        st.session_state["bm_buyer_type"] = "family"
+
+    # ── SECTION 1: HERO ─────────────────────────────────────────────────────
+    _bh_l, _bh_r = st.columns([6, 4], gap="large")
+
+    with _bh_l:
+        _bm_bullets_html = "".join(
+            f"<div style='display:flex;align-items:flex-start;margin-bottom:0.65rem;'>"
+            f"<span style='color:{OLIVE};font-weight:800;font-size:0.9rem;"
+            f"margin-right:0.6rem;flex-shrink:0;line-height:1.5;'>✓</span>"
+            f"<span style='font-size:0.85rem;color:#6A6A64;line-height:1.65;'>{_b}</span>"
+            f"</div>"
+            for _b in [
+                "Personalised neighbourhood recommendations",
+                "Estimated market budgets",
+                "Home-style and lifestyle suggestions",
+                "Lifestyle compatibility insights",
+            ]
+        )
+        st.markdown(
+            f"<p style='font-size:0.72rem;font-weight:700;letter-spacing:0.18em;"
+            f"color:{OLIVE};text-transform:uppercase;margin:0.3rem 0 0.6rem 0;'>"
+            f"Buyer Match System</p>"
+            f"<h2 style='font-size:2.0rem;font-weight:800;color:{CHARCOAL};"
+            f"letter-spacing:-0.025em;line-height:1.15;margin:0 0 0.75rem 0;'>"
+            f"Find Your Ideal<br>Ames Neighbourhood.</h2>"
+            f"<p style='font-size:0.92rem;color:#6A6A64;line-height:1.7;margin-bottom:1.4rem;'>"
+            f"Answer a few lifestyle questions and discover which Ames neighbourhoods best fit "
+            f"your goals, budget, and living preferences.</p>"
+            f"{_bm_bullets_html}"
+            f"<p style='font-size:0.68rem;color:#AAA;margin-top:1.2rem;font-style:italic;'>"
+            f"Lifestyle-based recommendation &mdash; separate from the ML price prediction model.</p>",
+            unsafe_allow_html=True,
+        )
+
+    with _bh_r:
+        try:
+            import base64 as _b64bm
+            _bh_b64 = _b64bm.b64encode(open("assets/house.png", "rb").read()).decode()
+            st.markdown(
+                f"<div style='display:flex;align-items:center;justify-content:center;"
+                f"height:100%;padding-top:0.5rem;'>"
+                f"<img src='data:image/png;base64,{_bh_b64}' "
+                f"style='width:100%;max-width:400px;border-radius:14px;"
+                f"opacity:0.88;display:block;margin:auto;'/></div>",
+                unsafe_allow_html=True,
+            )
+        except FileNotFoundError:
+            pass
+
+    st.markdown(
+        f"<div style='height:1px;background:{SAGE};opacity:0.35;margin:2.2rem 0 1.8rem 0;'></div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── SECTION 2: BUYER PROFILE CARDS ──────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:0.72rem;font-weight:700;letter-spacing:0.18em;"
+        f"color:{OLIVE};text-transform:uppercase;margin-bottom:0.45rem;'>Step 1</p>"
+        f"<p style='font-size:1.25rem;font-weight:800;color:{CHARCOAL};"
+        f"letter-spacing:-0.01em;margin-bottom:0.28rem;'>Select your buyer profile</p>"
+        f"<p style='font-size:0.85rem;color:#888;margin-bottom:1.3rem;'>"
+        f"Choose the profile that best describes your goals.</p>",
+        unsafe_allow_html=True,
+    )
+
+    _PERSONAS = [
+        ("first_time", "🏠", "First-Time Buyer",
+         "Entering the market — focused on affordability and a safe, stable community."),
+        ("family",     "🏡", "Family Buyer",
+         "Looking for space, safety, and long-term value in a welcoming neighbourhood."),
+        ("student",    "🎓", "Student / Young Professional",
+         "Prioritising affordability, accessibility, and a vibrant urban feel."),
+        ("luxury",     "✦",  "Luxury Buyer",
+         "Seeking the finest homes, premium locations, and top-tier specifications."),
+        ("investor",   "📈", "Real Estate Investor",
+         "Targeting value gaps, rental potential, and upside in underpriced districts."),
+        ("downsizer",  "🌿", "Downsizer / Retiree",
+         "Ready to simplify — quality, comfort, and low-maintenance living."),
+    ]
+
+    for _row_start in range(0, 6, 3):
+        _pcols = st.columns(3, gap="large")
+        for _col, (_pcode, _icon, _ptitle, _pdesc) in zip(_pcols, _PERSONAS[_row_start:_row_start+3]):
+            with _col:
+                _active = st.session_state["bm_buyer_type"] == _pcode
+                _card_style = (
+                    f"border:2px solid {OLIVE};box-shadow:0 0 0 3px rgba(79,95,52,0.10);"
+                    f"background:rgba(79,95,52,0.05);"
+                ) if _active else f"border:1px solid #DDD9D0;background:{WHITE};"
+                _badge = (
+                    f"<div style='margin-top:0.8rem;font-size:0.66rem;font-weight:700;"
+                    f"color:{OLIVE};letter-spacing:0.1em;text-transform:uppercase;'>✓ Selected</div>"
+                ) if _active else ""
+                st.markdown(
+                    f"<div style='{_card_style}border-radius:12px;padding:1.35rem 1.25rem;"
+                    f"margin-bottom:0.35rem;min-height:148px;'>"
+                    f"<div style='font-size:1.45rem;margin-bottom:0.48rem;line-height:1;'>{_icon}</div>"
+                    f"<div style='font-size:0.97rem;font-weight:700;color:{CHARCOAL};"
+                    f"margin-bottom:0.28rem;line-height:1.3;'>{_ptitle}</div>"
+                    f"<div style='font-size:0.77rem;color:#888;line-height:1.62;'>{_pdesc}</div>"
+                    f"{_badge}</div>",
+                    unsafe_allow_html=True,
+                )
+                if not _active:
+                    if st.button("Select", key=f"bm_card_{_pcode}", use_container_width=True):
+                        st.session_state["bm_buyer_type"] = _pcode
+                        st.rerun()
+
+    st.markdown(
+        f"<div style='height:1px;background:{SAGE};opacity:0.35;margin:2.2rem 0 1.8rem 0;'></div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── SECTION 3: LIFESTYLE PREFERENCES ────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:0.72rem;font-weight:700;letter-spacing:0.18em;"
+        f"color:{OLIVE};text-transform:uppercase;margin-bottom:0.45rem;'>Step 2</p>"
+        f"<p style='font-size:1.25rem;font-weight:800;color:{CHARCOAL};"
+        f"letter-spacing:-0.01em;margin-bottom:0.28rem;'>Lifestyle preferences</p>"
+        f"<p style='font-size:0.85rem;color:#888;margin-bottom:1.3rem;'>"
+        f"Refine your match with a few quick preferences.</p>",
+        unsafe_allow_html=True,
+    )
+
+    _pref_l, _pref_r = st.columns(2, gap="large")
+
+    with _pref_l:
+        _bm_budget = st.slider(
+            "Budget range", min_value=80_000, max_value=600_000,
+            value=(120_000, 350_000), step=10_000, format="$%d", key="bm_budget",
+        )
+        _bm_space = st.select_slider(
+            "Space priority",
+            options=["Compact", "Small", "Medium", "Spacious", "Large estate"],
+            value="Medium", key="bm_space",
+        )
+        _bm_prem = st.radio(
+            "Premium home interest", options=["Standard market", "Premium homes"],
+            horizontal=True, key="bm_prem",
+        )
+        _bm_gar = st.select_slider(
+            "Garage importance",
+            options=["Not important", "Minor", "Moderate", "Important", "Essential"],
+            value="Moderate", key="bm_gar",
+        )
+
+    with _pref_r:
+        _bm_nbhd = st.selectbox(
+            "Neighbourhood feel",
+            ["Quiet", "Walkable", "Student-friendly",
+             "Family-oriented", "High-end luxury", "Investment potential"],
+            key="bm_nbhd",
+        )
+        _bm_const = st.radio(
+            "Construction preference", ["Older charm", "Balanced", "Newer homes"],
+            horizontal=True, key="bm_const",
+        )
+
+    # ── Score all neighbourhoods ─────────────────────────────────────────────
+    _space_val_map = {"Compact": 1, "Small": 2, "Medium": 3, "Spacious": 4, "Large estate": 5}
+    _gar_val_map   = {"Not important": 1, "Minor": 2, "Moderate": 3, "Important": 4, "Essential": 5}
+
+    _bm_prefs = {
+        "buyer_type":        st.session_state["bm_buyer_type"],
+        "budget_max":        _bm_budget[1],
+        "space_priority":    _space_val_map[_bm_space],
+        "premium_interest":  _bm_prem,
+        "nbhd_pref":         _bm_nbhd,
+        "garage_imp":        _gar_val_map[_bm_gar],
+        "construction_pref": _bm_const,
+    }
+
+    _all_bm_scores = {code: _bm_score(code, _bm_prefs) for code in _BM_NBHD}
+    _bm_ranked = sorted(_all_bm_scores.items(), key=lambda x: x[1], reverse=True)
+    _bm_top3   = _bm_ranked[:3]
+
+    st.markdown(
+        f"<div style='height:1px;background:{SAGE};opacity:0.35;margin:2.2rem 0 1.8rem 0;'></div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── SECTION 4: SMART MATCH RESULTS ──────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:0.72rem;font-weight:700;letter-spacing:0.18em;"
+        f"color:{OLIVE};text-transform:uppercase;margin-bottom:0.45rem;'>Your Results</p>"
+        f"<p style='font-size:1.25rem;font-weight:800;color:{CHARCOAL};"
+        f"letter-spacing:-0.01em;margin-bottom:0.28rem;'>Neighbourhood matches</p>"
+        f"<p style='font-size:0.85rem;color:#888;margin-bottom:1.3rem;'>"
+        f"Based on your profile and preferences — updated in real time.</p>",
+        unsafe_allow_html=True,
+    )
+
+    _persona_labels = {p[0]: p[2] for p in _PERSONAS}
+    _active_label   = _persona_labels.get(st.session_state["bm_buyer_type"], "Buyer")
+    _tier_colors    = {"Premium": OLIVE, "Mid-Range": "#B8943A", "Budget": SAGE}
+
+    _main_code, _main_score = _bm_top3[0]
+    _mi = NEIGHBORHOOD_INFO[_main_code]
+    _md = _BM_NBHD[_main_code]
+    _main_full, _main_desc, _main_tier, _main_med = _mi
+    _main_prem, _main_sf, _main_yr, _main_gar_c, _main_tags = (
+        _md[0], _md[2], _md[3], _md[4], _md[5]
+    )
+
+    # SVG score ring
+    _circ = 2 * 3.14159 * 38
+    _dash = (_main_score / 100) * _circ
+    _score_ring = (
+        f"<div style='position:relative;width:96px;height:96px;flex-shrink:0;'>"
+        f"<svg width='96' height='96' viewBox='0 0 96 96' style='transform:rotate(-90deg);'>"
+        f"<circle cx='48' cy='48' r='38' fill='none' stroke='#E6E3D9' stroke-width='7'/>"
+        f"<circle cx='48' cy='48' r='38' fill='none' stroke='{OLIVE}' stroke-width='7' "
+        f"stroke-dasharray='{_dash:.1f} {_circ:.1f}' stroke-linecap='round'/>"
+        f"</svg>"
+        f"<div style='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);"
+        f"text-align:center;'>"
+        f"<div style='font-size:1.25rem;font-weight:800;color:{OLIVE};line-height:1;'>"
+        f"{_main_score}%</div>"
+        f"<div style='font-size:0.56rem;font-weight:700;color:{SAGE};text-transform:uppercase;"
+        f"letter-spacing:0.1em;'>Match</div>"
+        f"</div></div>"
+    )
+
+    # Match bullet points from actual attributes
+    _match_pts = []
+    if _main_tier == "Premium":
+        _match_pts.append("Premium-tier district")
+    elif _main_tier == "Mid-Range":
+        _match_pts.append("Balanced mid-range market")
+    else:
+        _match_pts.append("Accessible entry-level market")
+    if _main_prem >= 30:
+        _match_pts.append(f"~{_main_prem}% of homes are premium-classified")
+    if _main_sf >= 1800:
+        _match_pts.append("Generous living area")
+    elif _main_sf >= 1500:
+        _match_pts.append("Well-sized homes")
+    if _main_yr >= 2000:
+        _match_pts.append("Predominantly newer construction")
+    elif _main_yr <= 1960:
+        _match_pts.append("Historic character and charm")
+    if "quiet" in _main_tags:
+        _match_pts.append("Quiet residential setting")
+    if "family-oriented" in _main_tags:
+        _match_pts.append("Family-friendly environment")
+    if "walkable" in _main_tags:
+        _match_pts.append("Walkable neighbourhood feel")
+    if "student-friendly" in _main_tags:
+        _match_pts.append("Campus-accessible location")
+    if "investment" in _main_tags:
+        _match_pts.append("Strong investment potential")
+    _match_pts_html = "".join(
+        f"<div style='display:flex;align-items:flex-start;margin-bottom:0.52rem;'>"
+        f"<span style='color:{OLIVE};font-weight:800;margin-right:0.55rem;flex-shrink:0;'>✓</span>"
+        f"<span style='font-size:0.84rem;color:{CHARCOAL};line-height:1.6;'>{pt}</span>"
+        f"</div>"
+        for pt in _match_pts[:4]
+    )
+
+    _bgt_lo = int(_bm_budget[0] / 1_000)
+    _bgt_hi = int(_bm_budget[1] / 1_000)
+
+    _res_l, _res_r = st.columns([5, 4], gap="large")
+
+    with _res_l:
+        st.markdown(
+            f"<div style='background:{WHITE};border:1px solid #DDD9D0;"
+            f"border-top:4px solid {OLIVE};border-radius:0 0 14px 14px;"
+            f"padding:1.8rem;box-shadow:0 4px 18px rgba(0,0,0,0.06);'>"
+            f"<div style='display:flex;justify-content:space-between;"
+            f"align-items:flex-start;margin-bottom:1.1rem;'>"
+            f"<div>"
+            f"<span style='display:inline-block;background:{OLIVE};color:white;"
+            f"border-radius:20px;padding:0.14rem 0.72rem;font-size:0.60rem;font-weight:700;"
+            f"letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.6rem;'>Best Match</span>"
+            f"<div style='font-size:1.55rem;font-weight:800;color:{CHARCOAL};"
+            f"letter-spacing:-0.02em;line-height:1.15;margin-bottom:0.22rem;'>{_main_full}</div>"
+            f"<div style='font-size:0.80rem;color:{SAGE};font-weight:600;'>"
+            f"{_main_tier} District</div>"
+            f"</div>"
+            f"{_score_ring}"
+            f"</div>"
+            f"<div style='margin-bottom:1.1rem;'>{_match_pts_html}</div>"
+            f"<div style='border-top:1px solid #EEECE7;padding-top:1rem;'>"
+            f"<div style='display:flex;gap:1.8rem;flex-wrap:wrap;'>"
+            f"<div><div style='font-size:0.64rem;font-weight:700;letter-spacing:0.12em;"
+            f"color:{SAGE};text-transform:uppercase;margin-bottom:0.18rem;'>Median Price</div>"
+            f"<div style='font-size:1.1rem;font-weight:800;color:{OLIVE};'>${_main_med}k</div></div>"
+            f"<div><div style='font-size:0.64rem;font-weight:700;letter-spacing:0.12em;"
+            f"color:{SAGE};text-transform:uppercase;margin-bottom:0.18rem;'>Your Budget</div>"
+            f"<div style='font-size:1.1rem;font-weight:800;color:{CHARCOAL};'>"
+            f"${_bgt_lo}k – ${_bgt_hi}k</div></div>"
+            f"<div><div style='font-size:0.64rem;font-weight:700;letter-spacing:0.12em;"
+            f"color:{SAGE};text-transform:uppercase;margin-bottom:0.18rem;'>Premium Rate</div>"
+            f"<div style='font-size:1.1rem;font-weight:800;color:{CHARCOAL};'>"
+            f"{_main_prem}%</div></div>"
+            f"</div></div></div>",
+            unsafe_allow_html=True,
+        )
+
+    with _res_r:
+        for _sec_code, _sec_score in _bm_top3[1:3]:
+            _si = NEIGHBORHOOD_INFO[_sec_code]
+            _sd = _BM_NBHD[_sec_code]
+            _sec_full, _sec_desc, _sec_tier, _sec_med = _si
+            _sec_prem = _sd[0]
+            _sec_tc   = _tier_colors[_sec_tier]
+            st.markdown(
+                f"<div style='background:{WHITE};border:1px solid #DDD9D0;"
+                f"border-top:3px solid {SAGE};border-radius:0 0 12px 12px;"
+                f"padding:1.3rem 1.4rem;margin-bottom:0.9rem;"
+                f"box-shadow:0 2px 8px rgba(0,0,0,0.05);'>"
+                f"<div style='display:flex;justify-content:space-between;"
+                f"align-items:flex-start;margin-bottom:0.6rem;'>"
+                f"<div>"
+                f"<span style='display:inline-block;background:{_sec_tc};color:white;"
+                f"border-radius:20px;padding:0.10rem 0.58rem;font-size:0.58rem;font-weight:700;"
+                f"letter-spacing:0.10em;text-transform:uppercase;margin-bottom:0.42rem;'>"
+                f"{_sec_tier}</span>"
+                f"<div style='font-size:1.05rem;font-weight:800;color:{CHARCOAL};"
+                f"letter-spacing:-0.01em;line-height:1.2;'>{_sec_full}</div>"
+                f"</div>"
+                f"<div style='text-align:right;flex-shrink:0;margin-left:0.8rem;'>"
+                f"<div style='font-size:1.25rem;font-weight:800;color:{OLIVE};line-height:1;'>"
+                f"{_sec_score}%</div>"
+                f"<div style='font-size:0.58rem;color:{SAGE};font-weight:600;"
+                f"text-transform:uppercase;letter-spacing:0.08em;'>Match</div>"
+                f"</div></div>"
+                f"<div style='font-size:0.78rem;color:#888;line-height:1.6;margin-bottom:0.6rem;'>"
+                f"{_sec_desc[:105]}{'...' if len(_sec_desc)>105 else ''}</div>"
+                f"<div style='display:flex;gap:1.2rem;'>"
+                f"<div style='font-size:0.70rem;'>"
+                f"<span style='color:{SAGE};font-weight:600;'>Median</span> "
+                f"<span style='color:{CHARCOAL};font-weight:700;'>${_sec_med}k</span></div>"
+                f"<div style='font-size:0.70rem;'>"
+                f"<span style='color:{SAGE};font-weight:600;'>Premium</span> "
+                f"<span style='color:{CHARCOAL};font-weight:700;'>{_sec_prem}%</span></div>"
+                f"</div></div>",
+                unsafe_allow_html=True,
+            )
+
+    st.markdown(
+        f"<div style='height:1px;background:{SAGE};opacity:0.35;margin:2.2rem 0 1.8rem 0;'></div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── SECTION 5: WHY THIS MATCHES YOU ─────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:0.72rem;font-weight:700;letter-spacing:0.18em;"
+        f"color:{OLIVE};text-transform:uppercase;margin-bottom:0.45rem;'>Insights</p>"
+        f"<p style='font-size:1.25rem;font-weight:800;color:{CHARCOAL};"
+        f"letter-spacing:-0.01em;margin-bottom:1.3rem;'>Why this neighbourhood fits you</p>",
+        unsafe_allow_html=True,
+    )
+
+    _buyer_insight_copy = {
+        "first_time": (f"As a first-time buyer, you prioritise affordability and stability. "
+                       f"{_main_full} offers entry-level access with a balanced community feel."),
+        "family":     (f"Families need space and safety. {_main_full} delivers quality "
+                       f"construction and a welcoming neighbourhood environment."),
+        "student":    (f"Students and young professionals benefit from {_main_full}'s "
+                       f"accessible pricing and proximity to Ames' key amenities."),
+        "luxury":     (f"Luxury buyers will find {_main_full} aligns with premium specifications, "
+                       f"high-quality construction, and strong resale credentials."),
+        "investor":   (f"Investors targeting value potential will find {_main_full} offers "
+                       f"strong fundamentals with room for market-driven appreciation."),
+        "downsizer":  (f"{_main_full} suits downsizers looking for a comfortable, well-maintained "
+                       f"setting with stable community character and fewer demands."),
+    }
+
+    _budget_insight = (
+        f"The median price in {_main_full} (${_main_med}k) sits within your budget ceiling "
+        f"of ${_bgt_hi}k — room to negotiate or invest in improvements."
+        if _main_med * 1_000 <= _bm_budget[1] else
+        f"The median price in {_main_full} (${_main_med}k) is slightly above your stated "
+        f"budget — but the neighbourhood's profile closely matches your goals."
+    )
+
+    _market_tail = (
+        "Among the highest premium-home concentrations in the city." if _main_prem >= 40
+        else "A stable, consistent segment of the Ames market."
+    )
+
+    _insight_cards = [
+        (f"Profile match — {_active_label}",
+         _buyer_insight_copy.get(st.session_state["bm_buyer_type"], "")),
+        ("Budget alignment", _budget_insight),
+        ("Market insight",
+         f"Homes in {_main_full} carry a ~{_main_prem}% premium-home rate. {_market_tail}"),
+    ]
+
+    _ins_cols = st.columns(3, gap="large")
+    for _col, (_ins_title, _ins_body) in zip(_ins_cols, _insight_cards):
+        with _col:
+            st.markdown(
+                f"<div style='background:{WHITE};border:1px solid #DDD9D0;"
+                f"border-left:3px solid {OLIVE};border-radius:0 10px 10px 0;"
+                f"padding:1.25rem 1.3rem;'>"
+                f"<div style='font-size:0.67rem;font-weight:700;letter-spacing:0.12em;"
+                f"color:{OLIVE};text-transform:uppercase;margin-bottom:0.55rem;'>{_ins_title}</div>"
+                f"<div style='font-size:0.83rem;color:#6A6A64;line-height:1.72;'>{_ins_body}</div>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+    st.markdown(
+        f"<div style='height:1px;background:{SAGE};opacity:0.35;margin:2.2rem 0 1.8rem 0;'></div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── SECTION 6: COMPARISON TABLE ─────────────────────────────────────────
+    st.markdown(
+        f"<p style='font-size:0.72rem;font-weight:700;letter-spacing:0.18em;"
+        f"color:{OLIVE};text-transform:uppercase;margin-bottom:0.45rem;'>Overview</p>"
+        f"<p style='font-size:1.25rem;font-weight:800;color:{CHARCOAL};"
+        f"letter-spacing:-0.01em;margin-bottom:1.2rem;'>Top 5 neighbourhood comparison</p>",
+        unsafe_allow_html=True,
+    )
+
+    _tbl_rows_html = ""
+    for _ri, (_t5code, _t5score) in enumerate(_bm_ranked[:5]):
+        _t5i = NEIGHBORHOOD_INFO[_t5code]
+        _t5d = _BM_NBHD[_t5code]
+        _t5full, _, _t5tier, _t5med = _t5i
+        _t5prem, _t5sf, _t5yr = _t5d[0], _t5d[2], _t5d[3]
+        _row_bg  = "background:rgba(79,95,52,0.05);" if _ri == 0 else ""
+        _fw      = "800" if _ri == 0 else "500"
+        _sc_col  = OLIVE if _ri == 0 else CHARCOAL
+        _tbl_rows_html += (
+            f"<tr style='{_row_bg}border-bottom:1px solid #F0EDE7;'>"
+            f"<td style='padding:0.8rem 1rem;font-weight:{_fw};color:{CHARCOAL};"
+            f"font-size:0.88rem;'>{_t5full}</td>"
+            f"<td style='padding:0.8rem 1rem;color:#6A6A64;font-size:0.82rem;'>${_t5med}k</td>"
+            f"<td style='padding:0.8rem 1rem;color:#6A6A64;font-size:0.82rem;'>{_t5prem}%</td>"
+            f"<td style='padding:0.8rem 1rem;color:#6A6A64;font-size:0.82rem;'>{_t5sf:,} sq ft</td>"
+            f"<td style='padding:0.8rem 1rem;color:#6A6A64;font-size:0.82rem;'>{_t5yr}</td>"
+            f"<td style='padding:0.8rem 1rem;'>"
+            f"<span style='font-weight:800;color:{_sc_col};font-size:0.92rem;'>{_t5score}%</span>"
+            f"</td>"
+            f"</tr>"
+        )
+
+    _th = (
+        f"<th style='padding:0.75rem 1rem;text-align:left;font-size:0.67rem;font-weight:700;"
+        f"letter-spacing:0.12em;color:{SAGE};text-transform:uppercase;border-bottom:2px solid {SAGE};'>"
+    )
+    st.markdown(
+        f"<div style='background:{WHITE};border:1px solid #DDD9D0;border-radius:10px;"
+        f"overflow:hidden;'>"
+        f"<table style='width:100%;border-collapse:collapse;'>"
+        f"<thead><tr>"
+        f"{_th}Neighbourhood</th>"
+        f"{_th}Median Price</th>"
+        f"{_th}Premium %</th>"
+        f"{_th}Avg Living Area</th>"
+        f"{_th}Avg Year Built</th>"
+        f"{_th}Match Score</th>"
+        f"</tr></thead>"
+        f"<tbody>{_tbl_rows_html}</tbody>"
+        f"</table></div>",
+        unsafe_allow_html=True,
+    )
 
     st.markdown("<br>", unsafe_allow_html=True)
