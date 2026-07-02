@@ -262,6 +262,25 @@ html, body, .stApp, .stApp * {{
     color: white !important;
 }}
 
+/* ── Home CTA button (st.button, not form submit) ── */
+.stButton > button {{
+    background-color: #4F5F34 !important;
+    color: white !important;
+    border: 2px solid #4F5F34 !important;
+    border-radius: 6px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.92rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    padding: 0.6rem 1.5rem !important;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+}}
+.stButton > button:hover {{
+    background-color: #3C4828 !important;
+    border-color: #3C4828 !important;
+    color: white !important;
+}}
+
 /* ── Widget labels ── */
 [data-testid="stWidgetLabel"] p,
 [data-testid="stWidgetLabel"] label {{
@@ -534,6 +553,25 @@ def _checklist_html(items):
 # ════════════════════════════════════════════════════════════════════════════
 # TABS
 # ════════════════════════════════════════════════════════════════════════════
+# ── Tab-switch from Home CTA button ───────────────────────────────────────────
+if st.session_state.get("go_to_predict"):
+    st.session_state["go_to_predict"] = False
+    import streamlit.components.v1 as _stcv1
+    _stcv1.html(
+        """<script>
+        setTimeout(function() {
+            var tabs = parent.document.querySelectorAll('[data-baseweb="tab"]');
+            for (var i = 0; i < tabs.length; i++) {
+                if (tabs[i].innerText.trim().indexOf('Price') !== -1) {
+                    tabs[i].click();
+                    break;
+                }
+            }
+        }, 150);
+        </script>""",
+        height=0,
+    )
+
 tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Price & Premium Home Prediction", "Housing Insights", "Ames's Neighborhoods"])
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -910,7 +948,20 @@ with tab_home:
             unsafe_allow_html=True,
         )
 
-    st.markdown("<div style='margin-bottom:2rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:1.4rem;'></div>", unsafe_allow_html=True)
+
+    # ── CTA BUTTON ──────────────────────────────────────────────────────────
+    _cta_l, _cta_m, _cta_r = st.columns([1.5, 2, 1.5])
+    with _cta_m:
+        if st.button(
+            "Predict Home Price & Premium Home",
+            key="home_cta_predict",
+            use_container_width=True,
+        ):
+            st.session_state["go_to_predict"] = True
+            st.rerun()
+
+    st.markdown("<div style='margin-bottom:1.4rem;'></div>", unsafe_allow_html=True)
 
     # ── CALL TO ACTION ──────────────────────────────────────────────────────
     st.markdown(
