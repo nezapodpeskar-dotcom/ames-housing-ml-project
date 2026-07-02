@@ -2020,6 +2020,12 @@ _PREMIUM_FEATURED = {
                 ["Highest median price", "Premium enclave", "Top-tier value"]),
 }
 
+_MIDRANGE_FEATURED = {
+    "SawyerW": ("assets/sawyer_west.jpeg",         "image/jpeg"),
+    "Blmngtn": ("assets/bloomington_heights.jpg",  "image/jpeg"),
+    "Mitchel": ("assets/mitchel.jpg",              "image/jpeg"),
+}
+
 _BUDGET_FEATURED = {
     "NAmes":   ("assets/north_ames.webp",    "image/webp"),
     "Edwards": ("assets/edwards.webp",       "image/webp"),
@@ -2124,6 +2130,36 @@ def _midrange_card(code: str) -> None:
         f"<div style='font-size:0.74rem; font-weight:600; color:{SAGE};'>"
         f"Median &nbsp;${median}k</div>"
         f"</div>",
+        unsafe_allow_html=True,
+    )
+
+def _midrange_photo_card(code: str) -> None:
+    full_name, description, _, median = NEIGHBORHOOD_INFO[code]
+    img_path, mime = _MIDRANGE_FEATURED[code]
+    b64 = _load_nbhd_img(img_path)
+    img_block = (
+        f"<div style='height:165px; overflow:hidden; border-radius:12px 12px 0 0;'>"
+        f"<img src='data:{mime};base64,{b64}' "
+        f"style='width:100%; height:165px; object-fit:cover; display:block; opacity:0.92;' />"
+        f"</div>"
+    ) if b64 else ""
+    st.markdown(
+        f"<div style='background:{WHITE}; border:1px solid #DDD9D0; "
+        f"border-radius:12px; overflow:hidden; margin-bottom:0.85rem; "
+        f"box-shadow:0 2px 8px rgba(0,0,0,0.07);'>"
+        f"{img_block}"
+        f"<div style='padding:1.1rem 1.25rem 1.15rem 1.25rem;'>"
+        f"<span style='display:inline-block; background:{SAGE}; color:white; "
+        f"border-radius:20px; padding:0.11rem 0.62rem; font-size:0.60rem; "
+        f"font-weight:700; letter-spacing:0.10em; text-transform:uppercase; "
+        f"margin-bottom:0.44rem;'>Mid-Range</span>"
+        f"<div style='font-size:1.05rem; font-weight:800; color:{CHARCOAL}; "
+        f"letter-spacing:-0.01em; margin-bottom:0.38rem; line-height:1.25;'>{full_name}</div>"
+        f"<div style='font-size:0.80rem; color:#777; line-height:1.65; "
+        f"margin-bottom:0.48rem;'>{description}</div>"
+        f"<div style='font-size:0.74rem; font-weight:600; color:{SAGE};'>"
+        f"Median &nbsp;${median}k</div>"
+        f"</div></div>",
         unsafe_allow_html=True,
     )
 
@@ -2296,10 +2332,16 @@ with tab_nbhd:
         _nbhd_section_header("MID-RANGE COMMUNITIES", "Balanced residential value and family appeal"),
         unsafe_allow_html=True,
     )
-    _mr_codes = ["CollgCr", "Gilbert", "Crawfor", "Timber",
-                 "SawyerW", "Blmngtn", "ClearCr", "Mitchel"]
-    for _i in range(0, len(_mr_codes), 2):
-        _pair = _mr_codes[_i:_i+2]
+    # Featured three — editorial cards with photos
+    _mr_feat_cols = st.columns(3, gap="large")
+    for _col, _code in zip(_mr_feat_cols, ["SawyerW", "Blmngtn", "Mitchel"]):
+        with _col:
+            _midrange_photo_card(_code)
+
+    # Remaining mid-range neighborhoods — plain cards in 2-column grid
+    _mr_plain = ["CollgCr", "Gilbert", "Crawfor", "Timber", "ClearCr"]
+    for _i in range(0, len(_mr_plain), 2):
+        _pair = _mr_plain[_i:_i+2]
         _cols = st.columns(2, gap="large")
         for _col, _code in zip(_cols, _pair):
             with _col:
