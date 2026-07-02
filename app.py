@@ -1039,10 +1039,11 @@ def _predict_tab_body():
         left_col, right_col = st.columns(2, gap="large")
 
         with left_col:
-            overall_qual = st.slider(
+            overall_qual = st.number_input(
                 "Overall Quality",
                 min_value=1, max_value=10,
                 value=int(defaults_df["Overall Qual"].iloc[0]),
+                step=1,
                 help="1 = Very Poor   10 = Excellent",
             )
             gr_liv_area = st.number_input(
@@ -1064,17 +1065,18 @@ def _predict_tab_body():
                 float(defaults_df["Full Bath"].iloc[0])
                 + 0.5 * float(defaults_df["Half Bath"].iloc[0])
             )
-            total_bath = st.slider(
+            total_bath = st.number_input(
                 "Total Bathrooms (full + 0.5 per half bath)",
                 min_value=0.0, max_value=5.0,
                 value=_default_bath,
                 step=0.5,
                 format="%.1f",
             )
-            garage_cars = st.slider(
+            garage_cars = st.number_input(
                 "Garage Capacity (cars)",
                 min_value=0, max_value=4,
                 value=int(defaults_df["Garage Cars"].iloc[0]),
+                step=1,
             )
             _default_code = str(defaults_df["Neighborhood"].iloc[0])
             _full_names = list(NEIGHBORHOOD_NAMES.values())
