@@ -1339,7 +1339,7 @@ def _predict_tab_body():
         )
         st.markdown(
             f"<p style='font-size:1.0rem; font-weight:700; letter-spacing:0.18em; "
-            f"color:{OLIVE}; text-transform:uppercase; margin-bottom:0.9rem;'>"
+            f"color:#4F5F34; text-transform:uppercase; margin-bottom:0.9rem;'>"
             f"Investment Insights</p>",
             unsafe_allow_html=True,
         )
