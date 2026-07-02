@@ -1069,7 +1069,7 @@ with tab_predict:
 
         submitted = st.form_submit_button("Predict Home Price & Premium Home", use_container_width=True)
 
-    # ── Prediction ───────────────────────────────────────────────────────────
+    # ── Prediction (calculation only — runs on button click) ─────────────────
     if submitted:
         full_bath_val = int(total_bath)
         half_bath_val = 1 if (total_bath % 1 >= 0.4) else 0
@@ -1086,11 +1086,10 @@ with tab_predict:
         input_df["Neighborhood"] = _NAME_TO_CODE[neighborhood_full]
 
         # --- recompute engineered features so the model sees consistent values ---
-        # Formulas mirror what the training notebook computed before fitting.
-        yr_sold   = float(input_df["Yr Sold"].iloc[0])        # keep default sale year
-        bsmt_sf   = float(input_df["Total Bsmt SF"].iloc[0])  # keep default basement
+        yr_sold   = float(input_df["Yr Sold"].iloc[0])
+        bsmt_sf   = float(input_df["Total Bsmt SF"].iloc[0])
 
-        total_sf  = bsmt_sf + float(gr_liv_area)  # Gr Liv Area ≈ 1st + 2nd Flr SF
+        total_sf  = bsmt_sf + float(gr_liv_area)
         house_age = max(0, yr_sold - float(year_built))
         remod_age = max(0, yr_sold - float(input_df["Year Remod/Add"].iloc[0]))
         total_bath_full = (
@@ -1114,6 +1113,126 @@ with tab_predict:
         predicted_price = reg_model.predict(input_df)[0]
         premium_label   = clf_model.predict(input_df)[0]
         premium_proba   = clf_model.predict_proba(input_df)[0][1]
+
+        # ── Investment scoring ────────────────────────────────────────────────
+        _nbhd_code   = _NAME_TO_CODE[neighborhood_full]
+        _nbhd_tier   = NEIGHBORHOOD_INFO[_nbhd_code][2]
+        _AMES_MEDIAN = 163_000
+        _AMES_AVG_SF = 1_500
+
+        _score = 0
+        if overall_qual >= 7:               _score += 1
+        if overall_qual >= 9:               _score += 1
+        if gr_liv_area >= _AMES_AVG_SF:     _score += 1
+        if premium_label == 1:              _score += 1
+        if predicted_price >= _AMES_MEDIAN: _score += 1
+        if _nbhd_tier == "Premium":         _score += 1
+        elif _nbhd_tier == "Budget":        _score -= 1
+        _score = max(0, min(_score, 6))
+
+        if _score >= 4:
+            _inv_level = "HIGH"
+            _inv_color = OLIVE
+            _inv_desc  = "Strong investment fundamentals across quality, location, and price."
+        elif _score >= 2:
+            _inv_level = "MEDIUM"
+            _inv_color = CHARCOAL
+            _inv_desc  = "Moderate investment characteristics with some supporting factors."
+        else:
+            _inv_level = "LOW"
+            _inv_color = SAGE
+            _inv_desc  = "Limited investment upside at current market levels."
+
+        _price_diff_pct = ((predicted_price - _AMES_MEDIAN) / _AMES_MEDIAN) * 100
+        if _price_diff_pct > 0:
+            _price_vs_avg = f"{_price_diff_pct:.0f}% above Ames average"
+        elif _price_diff_pct < 0:
+            _price_vs_avg = f"{abs(_price_diff_pct):.0f}% below Ames average"
+        else:
+            _price_vs_avg = "At Ames average"
+
+        _resale = "Strong" if _score >= 4 else ("Moderate" if _score >= 2 else "Limited")
+
+        # ── Reasoning bullets ─────────────────────────────────────────────────
+        _is_premium = (premium_label == 1)
+
+        if _inv_level == "HIGH" and _is_premium:
+            _reasoning_bullets = [
+                "confirmed premium-market classification",
+                "strong neighborhood demand and location tier",
+                "above-average quality and living area",
+                "strong resale potential and high-value property profile",
+            ]
+        elif _inv_level == "HIGH" and not _is_premium:
+            _reasoning_bullets = [
+                "strong neighborhood and market positioning",
+                "above-average quality score and living area",
+                "price well above the Ames market average",
+                "solid resale indicators across multiple factors",
+            ]
+        elif _inv_level == "MEDIUM" and _is_premium:
+            _reasoning_bullets = [
+                "premium-market positioning with moderate investment balance",
+                "strong pricing level but mixed long-term indicators",
+                "above-average home characteristics confirmed by classifier",
+                "moderate resale stability relative to top-tier investment properties",
+            ]
+        elif _inv_level == "MEDIUM" and not _is_premium:
+            _reasoning_bullets = [
+                "balanced neighborhood positioning",
+                "moderate resale strength",
+                "average market pricing relative to Ames",
+                "solid property profile without premium-tier signals",
+            ]
+        elif _inv_level == "LOW" and _is_premium:
+            _reasoning_bullets = [
+                "premium-home characteristics present despite lower score",
+                "neighborhood or price factors temper overall investment rating",
+                "above-average home quality with limited market upside",
+                "investment signal mixed — premium quality, weaker market conditions",
+            ]
+        else:
+            _reasoning_bullets = [
+                "below-average price positioning relative to Ames market",
+                "weaker resale indicators across location and quality",
+                "limited investment signals at current market levels",
+            ]
+
+        _reason_bullet_html = "".join(
+            f"<div style='display:flex; align-items:flex-start; margin-bottom:0.35rem;'>"
+            f"<span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem; flex-shrink:0;'>&#8226;</span>"
+            f"<span style='font-size:0.86rem; color:{CHARCOAL}; line-height:1.6;'>{b}</span>"
+            f"</div>"
+            for b in _reasoning_bullets
+        )
+
+        # ── Persist all display values across reruns ──────────────────────────
+        st.session_state["predict_result"] = {
+            "predicted_price":    predicted_price,
+            "premium_label":      premium_label,
+            "premium_proba":      premium_proba,
+            "inv_level":          _inv_level,
+            "inv_color":          _inv_color,
+            "inv_desc":           _inv_desc,
+            "price_vs_avg":       _price_vs_avg,
+            "nbhd_tier":          _nbhd_tier,
+            "resale":             _resale,
+            "reason_bullet_html": _reason_bullet_html,
+        }
+
+    # ── Display results from session state (stable across slider moves) ───────
+    if "predict_result" in st.session_state:
+        _r = st.session_state["predict_result"]
+        predicted_price     = _r["predicted_price"]
+        premium_label       = _r["premium_label"]
+        premium_proba       = _r["premium_proba"]
+        _inv_level          = _r["inv_level"]
+        _inv_color          = _r["inv_color"]
+        _inv_desc           = _r["inv_desc"]
+        _price_vs_avg       = _r["price_vs_avg"]
+        _nbhd_tier          = _r["nbhd_tier"]
+        _resale             = _r["resale"]
+        _reason_bullet_html = _r["reason_bullet_html"]
 
         st.markdown(
             f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.13em; "
@@ -1201,51 +1320,6 @@ with tab_predict:
             unsafe_allow_html=True,
         )
 
-        # ── Heuristic scoring ────────────────────────────────────────────────
-        _nbhd_code   = _NAME_TO_CODE[neighborhood_full]
-        _nbhd_tier   = NEIGHBORHOOD_INFO[_nbhd_code][2]   # "Premium"|"Mid-Range"|"Budget"
-        _AMES_MEDIAN = 163_000   # training-set median sale price
-        _AMES_AVG_SF = 1_500     # approximate dataset mean above-ground living area
-
-        _score = 0
-        if overall_qual >= 7:            _score += 1
-        if overall_qual >= 9:            _score += 1
-        if gr_liv_area >= _AMES_AVG_SF:  _score += 1
-        if premium_label == 1:           _score += 1
-        if predicted_price >= _AMES_MEDIAN: _score += 1
-        if _nbhd_tier == "Premium":      _score += 1
-        elif _nbhd_tier == "Budget":     _score -= 1
-        _score = max(0, min(_score, 6))
-
-        if _score >= 4:
-            _inv_level = "HIGH"
-            _inv_color = OLIVE
-            _inv_desc  = "Strong investment fundamentals across quality, location, and price."
-        elif _score >= 2:
-            _inv_level = "MEDIUM"
-            _inv_color = CHARCOAL
-            _inv_desc  = "Moderate investment characteristics with some supporting factors."
-        else:
-            _inv_level = "LOW"
-            _inv_color = SAGE
-            _inv_desc  = "Limited investment upside at current market levels."
-
-        _price_diff_pct = ((predicted_price - _AMES_MEDIAN) / _AMES_MEDIAN) * 100
-        if _price_diff_pct > 0:
-            _price_vs_avg = f"{_price_diff_pct:.0f}% above Ames average"
-        elif _price_diff_pct < 0:
-            _price_vs_avg = f"{abs(_price_diff_pct):.0f}% below Ames average"
-        else:
-            _price_vs_avg = "At Ames average"
-
-        if _score >= 4:
-            _resale = "Strong"
-        elif _score >= 2:
-            _resale = "Moderate"
-        else:
-            _resale = "Limited"
-
-        # ── Row 1: Investment Potential card ─────────────────────────────────
         _ii_left, _ii_right = st.columns([1, 2], gap="large")
 
         with _ii_left:
@@ -1270,7 +1344,6 @@ with tab_predict:
                 unsafe_allow_html=True,
             )
 
-        # ── Row 1: Market Positioning cards ──────────────────────────────────
         with _ii_right:
             _mp1, _mp2, _mp3 = st.columns(3, gap="medium")
             with _mp1:
@@ -1321,59 +1394,6 @@ with tab_predict:
                     """,
                     unsafe_allow_html=True,
                 )
-
-        # ── How Investment Potential is calculated (unified card) ────────────
-        _is_premium = (premium_label == 1)
-
-        if _inv_level == "HIGH" and _is_premium:
-            _reasoning_bullets = [
-                "confirmed premium-market classification",
-                "strong neighborhood demand and location tier",
-                "above-average quality and living area",
-                "strong resale potential and high-value property profile",
-            ]
-        elif _inv_level == "HIGH" and not _is_premium:
-            _reasoning_bullets = [
-                "strong neighborhood and market positioning",
-                "above-average quality score and living area",
-                "price well above the Ames market average",
-                "solid resale indicators across multiple factors",
-            ]
-        elif _inv_level == "MEDIUM" and _is_premium:
-            _reasoning_bullets = [
-                "premium-market positioning with moderate investment balance",
-                "strong pricing level but mixed long-term indicators",
-                "above-average home characteristics confirmed by classifier",
-                "moderate resale stability relative to top-tier investment properties",
-            ]
-        elif _inv_level == "MEDIUM" and not _is_premium:
-            _reasoning_bullets = [
-                "balanced neighborhood positioning",
-                "moderate resale strength",
-                "average market pricing relative to Ames",
-                "solid property profile without premium-tier signals",
-            ]
-        elif _inv_level == "LOW" and _is_premium:
-            _reasoning_bullets = [
-                "premium-home characteristics present despite lower score",
-                "neighborhood or price factors temper overall investment rating",
-                "above-average home quality with limited market upside",
-                "investment signal mixed — premium quality, weaker market conditions",
-            ]
-        else:  # LOW, not premium
-            _reasoning_bullets = [
-                "below-average price positioning relative to Ames market",
-                "weaker resale indicators across location and quality",
-                "limited investment signals at current market levels",
-            ]
-
-        _reason_bullet_html = "".join(
-            f"<div style='display:flex; align-items:flex-start; margin-bottom:0.35rem;'>"
-            f"<span style='color:{OLIVE}; font-weight:800; margin-right:0.5rem; flex-shrink:0;'>&#8226;</span>"
-            f"<span style='font-size:0.86rem; color:{CHARCOAL}; line-height:1.6;'>{b}</span>"
-            f"</div>"
-            for b in _reasoning_bullets
-        )
 
         st.markdown(
             f"""
