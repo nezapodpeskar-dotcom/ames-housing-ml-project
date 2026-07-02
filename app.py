@@ -553,25 +553,6 @@ def _checklist_html(items):
 # ════════════════════════════════════════════════════════════════════════════
 # TABS
 # ════════════════════════════════════════════════════════════════════════════
-# ── Tab-switch from Home CTA button ───────────────────────────────────────────
-if st.session_state.get("go_to_predict"):
-    st.session_state["go_to_predict"] = False
-    import streamlit.components.v1 as _stcv1
-    _stcv1.html(
-        """<script>
-        setTimeout(function() {
-            var tabs = parent.document.querySelectorAll('[data-baseweb="tab"]');
-            for (var i = 0; i < tabs.length; i++) {
-                if (tabs[i].innerText.trim().indexOf('Price') !== -1) {
-                    tabs[i].click();
-                    break;
-                }
-            }
-        }, 150);
-        </script>""",
-        height=0,
-    )
-
 tab_home, tab_predict, tab_eda, tab_nbhd = st.tabs(["Home", "Price & Premium Home Prediction", "Housing Insights", "Ames's Neighborhoods"])
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -948,20 +929,7 @@ with tab_home:
             unsafe_allow_html=True,
         )
 
-    st.markdown("<div style='margin-bottom:1.4rem;'></div>", unsafe_allow_html=True)
-
-    # ── CTA BUTTON ──────────────────────────────────────────────────────────
-    _cta_l, _cta_m, _cta_r = st.columns([1.5, 2, 1.5])
-    with _cta_m:
-        if st.button(
-            "Let's Predict Home Price & Premium Home",
-            key="home_cta_predict",
-            use_container_width=True,
-        ):
-            st.session_state["go_to_predict"] = True
-            st.rerun()
-
-    st.markdown("<div style='margin-bottom:1.4rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:2rem;'></div>", unsafe_allow_html=True)
 
     # ── CALL TO ACTION ──────────────────────────────────────────────────────
     st.markdown(
@@ -1017,6 +985,15 @@ _NAME_TO_CODE = {v: k for k, v in NEIGHBORHOOD_NAMES.items()}
 
 @st.fragment
 def _predict_tab_body():
+    # ── TAB HEADER BANNER ───────────────────────────────────────────────────
+    st.markdown(
+        f"<div style='background:#4F5F34; color:white; font-family:Inter,sans-serif; "
+        f"font-size:0.92rem; font-weight:700; letter-spacing:0.04em; "
+        f"padding:0.6rem 1.5rem; border-radius:6px; margin-bottom:1.5rem;'>"
+        f"Let's Predict Home Price &amp; Premium Home</div>",
+        unsafe_allow_html=True,
+    )
+
     # ── HERO: two-column layout ─────────────────────────────────────────────
     _hero_l, _hero_r = st.columns([11, 9], gap="large")
 
