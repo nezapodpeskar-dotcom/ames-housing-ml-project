@@ -215,56 +215,31 @@ html, body, .stApp, .stApp * {{
     border-right: 1px solid {SAGE};
 }}
 
-/* ── Nav bar (st.radio styled as tabs) ── */
-div[data-testid="stRadio"] {{
-    border-bottom: 2px solid {SAGE};
-    margin-bottom: 1.2rem;
-    padding-bottom: 0;
+/* ── Tab bar ── */
+.stTabs [data-baseweb="tab-list"] {{
+    gap: 0;
+    border-bottom: 2px solid {SAGE} !important;
+    background: transparent;
 }}
-div[data-testid="stRadio"] [role="radiogroup"] {{
-    gap: 0 !important;
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-}}
-div[data-testid="stRadio"] label {{
-    display: inline-flex !important;
-    background: transparent !important;
+.stTabs [data-baseweb="tab"] {{
+    background: transparent;
     border: none !important;
     border-bottom: 3px solid transparent !important;
-    margin-bottom: -2px !important;
-    padding: 10px 28px !important;
-    cursor: pointer !important;
-    border-radius: 0 !important;
-    transition: color 0.15s ease, border-color 0.15s ease;
+    color: {CHARCOAL};
+    font-size: 0.92rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 10px 28px;
+    margin-bottom: -2px;
+    border-radius: 0;
 }}
-div[data-testid="stRadio"] [data-baseweb="radio"] > div:first-child {{
-    display: none !important;
-}}
-div[data-testid="stRadio"] [data-baseweb="radio"] {{
-    display: flex;
-    align-items: center;
-    gap: 0;
-}}
-div[data-testid="stRadio"] [data-baseweb="radio"] p {{
-    color: {CHARCOAL} !important;
-    font-size: 0.92rem !important;
-    font-weight: 500 !important;
-    letter-spacing: 0.02em !important;
-    margin: 0 !important;
-}}
-div[data-testid="stRadio"] label:has(input:checked) {{
+.stTabs [data-baseweb="tab"][aria-selected="true"] {{
     border-bottom: 3px solid {OLIVE} !important;
-}}
-div[data-testid="stRadio"] label:has(input:checked) p {{
     color: {OLIVE} !important;
-    font-weight: 700 !important;
+    font-weight: 700;
 }}
-div[data-testid="stRadio"] label:hover p {{
-    color: {OLIVE} !important;
-}}
-div[data-testid="stRadio"] label:hover {{
-    border-bottom: 3px solid {OLIVE} !important;
+.stTabs [data-baseweb="tab"]:hover {{
+    color: {OLIVE};
 }}
 
 /* ── Predict button ── */
@@ -576,30 +551,19 @@ def _checklist_html(items):
     return f"<div>{rows}</div>"
 
 # ════════════════════════════════════════════════════════════════════════════
-# NAVIGATION
+# TABS
 # ════════════════════════════════════════════════════════════════════════════
-_PAGES = [
+tab_home, tab_predict, tab_nbhd, tab_eda = st.tabs([
     "Home",
     "Price & Premium Home Prediction",
     "Ames's Neighborhoods",
     "Market Housing Insights",
-]
-
-if "nav_radio" not in st.session_state:
-    st.session_state["nav_radio"] = "Home"
-
-_page = st.radio(
-    "Navigation",
-    options=_PAGES,
-    horizontal=True,
-    label_visibility="collapsed",
-    key="nav_radio",
-)
+])
 
 # ════════════════════════════════════════════════════════════════════════════
-# PAGE — HOME
+# TAB 0 — HOME
 # ════════════════════════════════════════════════════════════════════════════
-if _page == "Home":
+with tab_home:
 
     # ── HERO ────────────────────────────────────────────────────────────────
     _logo_path = "assets/logonoback.png"
@@ -993,7 +957,7 @@ if _page == "Home":
     )
 
 # ════════════════════════════════════════════════════════════════════════════
-# PAGE — PREDICT
+# TAB 1 — PREDICT
 # ════════════════════════════════════════════════════════════════════════════
 NEIGHBORHOOD_NAMES = {
     "NridgHt": "Northridge Heights",
@@ -1675,13 +1639,13 @@ def _predict_tab_body():
             unsafe_allow_html=True,
         )
 
-if _page == "Price & Premium Home Prediction":
+with tab_predict:
     _predict_tab_body()
 
 # ════════════════════════════════════════════════════════════════════════════
-# PAGE — MARKET HOUSING INSIGHTS
+# TAB 3 — MARKET HOUSING INSIGHTS
 # ════════════════════════════════════════════════════════════════════════════
-if _page == "Market Housing Insights":
+with tab_eda:
     # ── Hardcoded summary statistics (no raw file dependency) ─────────────────
     _N_HOMES      = 2_930
     _MEDIAN_PRICE = 160_000.0
@@ -2067,7 +2031,7 @@ if _page == "Market Housing Insights":
     )
 
 # ════════════════════════════════════════════════════════════════════════════
-# PAGE — AMES'S NEIGHBORHOODS
+# TAB 2 — AMES'S NEIGHBORHOODS
 # ════════════════════════════════════════════════════════════════════════════
 
 # Premium featured: code → (image path, mime type, tag list)
@@ -2270,7 +2234,7 @@ def _budget_photo_card(code: str) -> None:
         unsafe_allow_html=True,
     )
 
-if _page == "Ames's Neighborhoods":
+with tab_nbhd:
     # ── Page header ───────────────────────────────────────────────────────────
     st.markdown(
         f"<p style='font-size:0.72rem; font-weight:700; letter-spacing:0.22em; "
