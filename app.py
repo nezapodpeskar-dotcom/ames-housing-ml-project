@@ -526,6 +526,27 @@ hr {{
     box-shadow: 0 8px 24px rgba(79,95,52,0.13) !important;
     border-color: {OLIVE} !important;
 }}
+
+/* ── Mobile responsiveness ── */
+@media (max-width: 768px) {{
+    [data-testid="column"] {{
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+    }}
+    .stButton > button {{
+        font-size: 0.85rem !important;
+        padding: 0.6rem !important;
+    }}
+    [data-testid="stFormSubmitButton"] > button {{
+        font-size: 0.85rem !important;
+        padding: 0.6rem !important;
+    }}
+    div[data-testid="stMarkdownContainer"] * {{
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }}
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -646,6 +667,12 @@ def _checklist_html(items):
         for item in items
     )
     return f"<div>{rows}</div>"
+
+# ── Session state defaults ───────────────────────────────────────────────────
+if "prediction_made" not in st.session_state:
+    st.session_state.prediction_made = False
+if "bm_buyer_type" not in st.session_state:
+    st.session_state["bm_buyer_type"] = "family"
 
 # ════════════════════════════════════════════════════════════════════════════
 # TABS
@@ -1161,43 +1188,37 @@ def _predict_tab_body():
         left_col, right_col = st.columns(2, gap="large")
 
         with left_col:
-            overall_qual = st.number_input(
+            overall_qual = st.slider(
                 "Overall Quality",
                 min_value=1, max_value=10,
-                value=int(defaults_df["Overall Qual"].iloc[0]),
+                value=6,
                 step=1,
                 help="1 = Very Poor   10 = Excellent",
             )
-            gr_liv_area = st.number_input(
+            gr_liv_area = st.slider(
                 "Above-Ground Living Area (sq ft)",
-                min_value=300, max_value=5_000,
-                value=int(defaults_df["Gr Liv Area"].iloc[0]),
+                min_value=334, max_value=5642,
+                value=1500,
                 step=50,
             )
-            _year_options = list(range(1872, 2011))
-            _default_year = int(defaults_df["Year Built"].iloc[0])
-            year_built = st.selectbox(
+            year_built = st.slider(
                 "Year Built",
-                options=_year_options,
-                index=_year_options.index(_default_year),
+                min_value=1872, max_value=2010,
+                value=1990,
+                step=1,
             )
 
         with right_col:
-            _default_bath = (
-                float(defaults_df["Full Bath"].iloc[0])
-                + 0.5 * float(defaults_df["Half Bath"].iloc[0])
-            )
-            total_bath = st.number_input(
+            total_bath = st.slider(
                 "Total Bathrooms (full + 0.5 per half bath)",
-                min_value=0.0, max_value=5.0,
-                value=_default_bath,
+                min_value=1.0, max_value=6.0,
+                value=2.0,
                 step=0.5,
-                format="%.1f",
             )
-            garage_cars = st.number_input(
+            garage_cars = st.slider(
                 "Garage Capacity (cars)",
                 min_value=0, max_value=4,
-                value=int(defaults_df["Garage Cars"].iloc[0]),
+                value=2,
                 step=1,
             )
             _default_code = str(defaults_df["Neighborhood"].iloc[0])
@@ -1416,9 +1437,10 @@ def _predict_tab_body():
             "reason_bullet_html": _reason_bullet_html,
             "projected_5yr":      _projected_5yr,
         }
+        st.session_state.prediction_made = True
 
     # ── Display results from session state (stable across slider moves) ───────
-    if "predict_result" in st.session_state:
+    if st.session_state.prediction_made:
         _r = st.session_state["predict_result"]
         predicted_price     = _r["predicted_price"]
         premium_label       = _r["premium_label"]
@@ -2496,10 +2518,6 @@ with tab_nbhd:
 # TAB 4 — IDEAL BUYER MATCH
 # ════════════════════════════════════════════════════════════════════════════
 with tab_buyer:
-
-    # ── Session state defaults ───────────────────────────────────────────────
-    if "bm_buyer_type" not in st.session_state:
-        st.session_state["bm_buyer_type"] = "family"
 
     # ── SECTION 1: HERO ─────────────────────────────────────────────────────
     _bh_l, _bh_r = st.columns([6, 4], gap="large")
