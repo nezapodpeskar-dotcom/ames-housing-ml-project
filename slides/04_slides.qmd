@@ -1,0 +1,94 @@
+---
+title: "Predicting Home Prices in Ames, Iowa"
+subtitle: "An End-to-End Machine Learning Project"
+author: "Neža Podpeskar"
+format:
+  revealjs:
+    theme: simple
+    slide-number: true
+    transition: fade
+    center: true
+    controls: true
+    progress: true
+    css: styles.css
+---
+
+## Predicting Home Prices in Ames, Iowa
+
+An End-to-End Machine Learning Project
+
+Neža Podpeskar
+
+Regression + Classification + Streamlit App
+
+---
+
+## The Problem
+
+Home pricing is one of the biggest financial decisions people make — yet pricing is often subjective and inconsistent.
+
+**Can we use data to answer two questions?**
+
+- What will a home sell for?
+- Is a home "premium" (top 25% by price)?
+
+---
+
+## The Data
+
+- Ames Housing dataset, Iowa (2006-2010)
+- 2,927 home sales after cleaning
+- 90 features: size, quality, garage, neighborhood, and more
+
+---
+
+## Our Approach
+
+- Cleaned and explored the data
+- Engineered new features from raw columns
+- Split data into training and test sets, carefully, to avoid leakage
+- Trained several models, from simple to advanced
+- Evaluated everything honestly on unseen test data
+
+---
+
+## What We Found
+
+- Typical price prediction error: ~$12,000
+- Premium-home classification accuracy: 96%
+- Strongest predictors: overall quality, size, neighborhood
+
+---
+
+## Complex Isn't Always Better
+
+Simple linear and logistic models performed almost as well as advanced XGBoost models.
+
+This matters. In real-world use, a model that's easy to explain and trust is often just as valuable as a slightly more accurate one.
+
+---
+
+## The Final Application
+
+A live web app where anyone can:
+
+- Get an instant price prediction
+- Check if a home is "premium"
+- Explore neighborhood insights
+
+Try it: ames-housing-by-nezky.streamlit.app
+
+---
+
+## Key Takeaways
+
+- Machine learning can meaningfully support pricing decisions
+- Quality, size, and location matter most
+- Simpler models are worth considering, not just complex ones
+- AI-assisted tools still require careful human verification
+
+---
+
+## Thank You
+
+Questions?
