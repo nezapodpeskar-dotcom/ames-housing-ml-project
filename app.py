@@ -964,7 +964,8 @@ NEIGHBORHOOD_NAMES = {
 # Reverse map: full name -> code, used after selectbox selection
 _NAME_TO_CODE = {v: k for k, v in NEIGHBORHOOD_NAMES.items()}
 
-with tab_predict:
+@st.fragment
+def _predict_tab_body():
     # ── HERO: two-column layout ─────────────────────────────────────────────
     _hero_l, _hero_r = st.columns([11, 9], gap="large")
 
@@ -1524,6 +1525,9 @@ with tab_predict:
             """,
             unsafe_allow_html=True,
         )
+
+with tab_predict:
+    _predict_tab_body()
 
 # ════════════════════════════════════════════════════════════════════════════
 # TAB 2 — EDA
