@@ -126,3 +126,5 @@ gantt
 - XGBoost regression: Test R2 = 0.944, MAE = $12,353
 - XGBoost classification: Test Accuracy = 96.1%, ROC-AUC = 0.9912
 - No data leakage: all preprocessing fit inside a Pipeline on training data only
+
+My final models predict home prices within about $12,000 on average and correctly classify premium homes 96% of the time on unseen test data — and because all preprocessing was fit only on training data inside a Pipeline, these results are trustworthy, not inflated by data leakage.
